@@ -1,0 +1,42 @@
+# Use this when the instance already runs something else on ports 80 and 443 —
+# an existing CRM, another site, any nginx or Caddy already terminating TLS.
+#
+#   docker compose -f docker-compose.shared-proxy.yml up -d --build
+#
+# The difference from docker-compose.yml is that no Caddy is started here and the
+# app is bound to 127.0.0.1 only. Two reverse proxies cannot share port 443, so
+# this hands routing and certificates to the proxy that is already there.
+#
+# Binding to 127.0.0.1 rather than 0.0.0.0 matters: on 0.0.0.0 the app would be
+# reachable directly on port 8000 from the internet, bypassing TLS and whatever
+# access rules the existing proxy applies. Docker also writes its own iptables
+# rules, so a published port can be open even when the host firewall looks closed.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WORKER_IN_PROCESS: "1"
+      # Still 1: the browser talks HTTPS to the existing proxy, so the cookie must
+      # be Secure. The proxy is responsible for forwarding X-Forwarded-Proto.
+      SECURE_COOKIES: "1"
+      FORWARDED_ALLOW_IPS: "*"
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    mem_limit: 384m
+    mem_reservation: 96m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

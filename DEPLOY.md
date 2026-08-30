@@ -38,10 +38,16 @@ The cheapest option that can legitimately take payments: Oracle's Always Free ti
 costs nothing and has no non-commercial clause. The trade is that you assemble it
 yourself — HTTPS, firewall, restarts — which the scripts here handle.
 
-**Take an ARM instance if your region has capacity.** Ampere A1 gives up to 4 OCPU
-and 24 GB free, against 1 OCPU and 1 GB on the x86 micro. Same price. ARM capacity
-is often exhausted in popular regions, which is why people end up on the micro; it
-is worth retrying, or picking a quieter region.
+**Take an ARM instance if your region has capacity.** Ampere A1 gives **2 OCPU and
+12 GB** free across the tenancy, against 1 OCPU and 1 GB on the x86 micro. Same
+price. Oracle halved this allowance on 15 June 2026 — older guides still say 4 OCPU
+and 24 GB. ARM capacity is often exhausted in popular regions, which is why people
+end up on the micro; it is worth retrying, or picking a quieter region.
+
+**You also get two Always Free x86 micro VMs per tenancy.** If one is already
+running something else, the second is free — see
+[deploy/SHARED-INSTANCE.md](deploy/SHARED-INSTANCE.md) for choosing between a second
+instance and sharing one.
 
 **1 GB is enough — provided Postgres lives elsewhere.** Measured inside the
 container, the app peaks around **71 MB**: 64 MB after import, plus roughly 5 MB
