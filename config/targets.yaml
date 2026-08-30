@@ -105,7 +105,7 @@ constraints:
   current_role: "Service Desk Incident Manager / Shift Lead (moving out of service desk)"
   work_authorisation: "Indian citizen, no sponsorship required, no US/EU work permit"
   minimum_salary_inr_lpa: 9
-  notice_period: "TODO — confirm your actual notice period at Capgemini"
+  notice_period: "90 days"
   open_to_relocation: true
   employment_type: "full-time"
   transferable_strengths: >
