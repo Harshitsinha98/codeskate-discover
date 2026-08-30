@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -39,6 +39,32 @@ class LLMError(RuntimeError):
     pass
 
 
+class SpendRecorder(Protocol):
+    """Where cost accounting goes.
+
+    Extracted so the spend guard is storage-agnostic: the CLI records into a local
+    SQLite file, the hosted multi-tenant app records into Postgres scoped to one
+    user. The guard logic itself must not care which.
+    """
+
+    def spent(self) -> float: ...
+
+    def record(self, **kw: Any) -> None: ...
+
+
+class SqliteRecorder:
+    """Default recorder — the single-user local database."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self.conn = conn
+
+    def spent(self) -> float:
+        return db.total_spend(self.conn)
+
+    def record(self, **kw: Any) -> None:
+        db.log_call(self.conn, **kw)
+
+
 def _extract_json(text: str) -> Any:
     """Models sometimes wrap JSON in prose or fences. Recover the object."""
     text = text.strip()
@@ -57,12 +83,20 @@ def _extract_json(text: str) -> Any:
 
 
 class LLM:
-    def __init__(self, settings: Settings, conn: sqlite3.Connection) -> None:
+    def __init__(
+        self, settings: Settings, recorder: SpendRecorder | sqlite3.Connection
+    ) -> None:
         if not settings.api_key:
             key = "ANTHROPIC_API_KEY" if settings.provider == "anthropic" else "OPENAI_API_KEY"
             raise SystemExit(f"{key} is not set. Copy .env.example to .env and fill it in.")
         self.s = settings
-        self.conn = conn
+        # Accept a raw sqlite connection so existing CLI call sites keep working.
+        if isinstance(recorder, sqlite3.Connection):
+            self.conn: sqlite3.Connection | None = recorder
+            self.recorder: SpendRecorder = SqliteRecorder(recorder)
+        else:
+            self.conn = None
+            self.recorder = recorder
         self.client = httpx.Client(timeout=TIMEOUT)
 
     # ---------- cost ----------
@@ -77,7 +111,7 @@ class LLM:
         ) / 1_000_000
 
     def _assert_budget(self) -> None:
-        spent = db.total_spend(self.conn)
+        spent = self.recorder.spent()
         if spent >= self.s.spend_limit_usd:
             raise SpendLimitExceeded(
                 f"Spend guard tripped: ${spent:.2f} of ${self.s.spend_limit_usd:.2f} used. "
@@ -185,7 +219,7 @@ class LLM:
                 text, usage = self._call_openai(model, instruction, user, max_tokens)
 
             cost = self._cost(model, usage)
-            db.log_call(self.conn, agent=agent, model=model, cost_usd=cost, **usage)
+            self.recorder.record(agent=agent, model=model, cost_usd=cost, **usage)
 
             try:
                 return schema.model_validate(_extract_json(text))
@@ -209,7 +243,7 @@ class LLM:
             text, usage = self._call_openai(
                 model, 'Reply with JSON {"status":"ok"}', "ping", 32
             )
-        db.log_call(
-            self.conn, agent="doctor", model=model, cost_usd=self._cost(model, usage), **usage
+        self.recorder.record(
+            agent="doctor", model=model, cost_usd=self._cost(model, usage), **usage
         )
         return text.strip()[:80]

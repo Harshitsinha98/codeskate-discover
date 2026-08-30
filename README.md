@@ -2,6 +2,19 @@
 
 A team of 18 AI agents that finds and wins you a better job.
 
+Three ways to run the same agents:
+
+| | Where it lives | For |
+|---|---|---|
+**CLI** | `src/codeskate/` | one person, a terminal, SQLite |
+**Local web app** | `web/` | one person, a browser, SQLite |
+**Hosted SaaS** | `saas/` | many users, Postgres, deployable to Vercel — see [DEPLOY.md](DEPLOY.md) |
+
+The eighteen agents are written once and shared by all three. Only persistence,
+the auth boundary and the execution model differ, which is the whole reason they
+were built as plain functions over explicit arguments rather than wired into a
+framework.
+
 Most job tools are single-shot: generate one resume, run one search. A job hunt is
 a **long-running pipeline** — profile, match, apply, referral, interview, offer.
 The advantage isn't a clever prompt; it's orchestration, memory, and a feedback

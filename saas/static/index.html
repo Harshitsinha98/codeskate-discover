@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeSkate — AI agents for your job hunt</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+</style>
+</head>
+<body class="h-full bg-slate-950 text-slate-200">
+
+<!-- ================= AUTH ================= -->
+<div id="authView" class="hidden min-h-full grid place-items-center px-5">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-7">
+      <div class="text-2xl font-semibold text-white tracking-tight">CodeSkate</div>
+      <p class="text-sm text-slate-400 mt-2">
+        A team of 18 AI agents that finds and wins you a better job.
+      </p>
+    </div>
+
+    <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <div class="flex gap-1 mb-5 text-sm">
+        <button id="tabLogin" class="authtab flex-1 py-2 rounded">Sign in</button>
+        <button id="tabSignup" class="authtab flex-1 py-2 rounded">Create account</button>
+      </div>
+
+      <form id="authForm" class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-500">Email</label>
+          <input id="email" type="email" required autocomplete="email"
+                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm
+                        focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Password</label>
+          <input id="password" type="password" required minlength="10"
+                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm
+                        focus:border-indigo-500 focus:outline-none">
+          <p id="pwHint" class="hidden text-xs text-slate-500 mt-1">At least 10 characters.</p>
+        </div>
+        <div id="authError" class="hidden text-sm text-rose-400"></div>
+        <button id="authSubmit" type="submit"
+                class="w-full py-2.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white
+                       text-sm font-medium disabled:opacity-50">Sign in</button>
+      </form>
+    </div>
+
+    <p class="text-xs text-slate-600 mt-4 text-center">
+      You supply your own OpenAI or Anthropic API key, so your usage bills your
+      account directly. Keys are encrypted at rest and never shown back to you.
+    </p>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="appView" class="hidden min-h-full">
+  <header class="border-b border-slate-800 bg-slate-900/60 sticky top-0 z-20 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
+      <div class="font-semibold tracking-tight text-white">CodeSkate</div>
+      <div class="ml-auto flex items-center gap-4 text-xs">
+        <div class="text-right">
+          <div class="text-slate-500">spend</div>
+          <div id="spendText" class="font-medium">$0.0000</div>
+        </div>
+        <div class="w-20 h-1.5 bg-slate-800 rounded overflow-hidden">
+          <div id="spendBar" class="h-full bg-emerald-500" style="width:0%"></div>
+        </div>
+        <div id="userEmail" class="text-slate-400 hidden sm:block"></div>
+        <button id="btnLogout" class="text-slate-500 hover:text-slate-200">Sign out</button>
+      </div>
+    </div>
+    <div class="max-w-6xl mx-auto px-5 flex gap-1 text-sm overflow-x-auto">
+      <button data-tab="home"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Get started</button>
+      <button data-tab="matches"  class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Matches</button>
+      <button data-tab="pipeline" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Pipeline</button>
+      <button data-tab="cost"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Cost</button>
+      <button data-tab="settings" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Settings</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-5 py-6">
+
+    <!-- HOME -->
+    <section id="tab-home" class="tabpane space-y-5">
+      <div class="rounded-lg border border-indigo-800/60 bg-indigo-950/30 p-4">
+        <div class="text-xs uppercase tracking-wide text-indigo-400 mb-2">Do this next</div>
+        <div id="nextActions" class="space-y-2 text-sm">loading…</div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s1dot" data-n="1" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">1</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Your documents</h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Resume (PDF) plus a brag document listing achievements <b>with numbers</b>.
+              Vague inputs produce a vague system — this is the highest-return hour in the process.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <label class="cursor-pointer px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
+                Upload files
+                <input id="fileInput" type="file" multiple accept=".pdf,.md,.txt" class="hidden">
+              </label>
+              <span class="text-xs text-slate-500">PDF text is extracted on upload. Max 2MB each.</span>
+            </div>
+            <div id="docList" class="mt-3 flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s2dot" data-n="2" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">2</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Skill graph <span class="text-xs text-slate-500 font-normal">Agents 1 + 2</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Extracts every skill with a level and <b>whether there is evidence for it</b>.
+              Skills with no evidence are never claimed on a tailored resume.
+            </p>
+            <button data-job="profile" class="jobbtn mt-3 px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">
+              Build skill graph
+            </button>
+            <div id="profileBox" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s3dot" data-n="3" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">3</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Live jobs <span class="text-xs text-emerald-500 font-normal">Agent 4 · free</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Reads companies' own public boards — Greenhouse, Lever, Ashby, Workday.
+              Runs one board at a time in the background, so you can keep working.
+            </p>
+            <button data-job="discover" class="jobbtn mt-3 px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">
+              Find jobs
+            </button>
+            <div id="postingCount" class="mt-3 text-sm text-slate-400"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s4dot" data-n="4" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">4</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Score matches <span class="text-xs text-slate-500 font-normal">Agent 5</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              A free rule-based filter discards the obvious misses, then only the
+              survivors are scored — each with a written reason.
+            </p>
+            <div class="mt-3 flex items-center gap-3">
+              <button data-job="score" class="jobbtn px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">Score jobs</button>
+              <label class="text-sm text-slate-400">max
+                <input id="scoreLimit" type="number" value="25" min="1" max="200"
+                       class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1"></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">5</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Gap analysis <span class="text-xs text-slate-500 font-normal">Agent 3</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              What is actually blocking you, and the smallest concrete thing you could
+              build to make each claim truthful.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <input id="gapRole" placeholder="e.g. Cloud Support Engineer at an MNC in India, 3-4 years"
+                     class="flex-1 min-w-[260px] bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+              <button data-job="gaps" class="jobbtn px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">Analyse</button>
+            </div>
+            <div id="gapBox" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MATCHES -->
+    <section id="tab-matches" class="tabpane hidden space-y-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 class="font-medium text-white">Scored matches</h2>
+        <label class="text-sm text-slate-400 ml-auto">min score
+          <input id="minScore" type="number" value="0" min="0" max="100"
+                 class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1"></label>
+        <button id="btnShortlist" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
+          Shortlist strong ones
+        </button>
+      </div>
+      <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
+        <b>The test that matters:</b> read the top 20 and ask — would I actually apply to 15 of these?
+        If not, your filters in Settings need work, or your target companies do. Polished
+        applications to jobs you don't want are worth nothing.
+      </div>
+      <div id="matchList" class="space-y-2"></div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section id="tab-pipeline" class="tabpane hidden space-y-4">
+      <h2 class="font-medium text-white">Your pipeline</h2>
+      <div id="funnelRow" class="flex flex-wrap gap-2"></div>
+      <div id="ratesBox" class="text-sm text-slate-400"></div>
+      <div id="appList" class="space-y-2"></div>
+    </section>
+
+    <!-- COST -->
+    <section id="tab-cost" class="tabpane hidden space-y-4">
+      <h2 class="font-medium text-white">What you have spent</h2>
+      <p class="text-sm text-slate-400">
+        Charged to your own API key. Logged per agent on every call, and the spend
+        guard refuses to start a call once your limit is reached.
+      </p>
+      <div id="costBox"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="tab-settings" class="tabpane hidden space-y-5 max-w-2xl">
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <h2 class="font-medium text-white">API key</h2>
+        <p class="text-sm text-slate-400 mt-1">
+          Bring your own key so usage bills your account. Stored encrypted; only the
+          last four characters are ever shown back.
+        </p>
+        <div id="keyStatus" class="mt-3 text-sm"></div>
+        <div class="mt-4 space-y-3">
+          <div class="flex gap-2">
+            <select id="provider" class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+            <input id="apiKey" type="password" placeholder="sk-..."
+                   class="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <input id="modelCheap" placeholder="cheap model (optional)"
+                   class="flex-1 min-w-[160px] bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+            <input id="modelSmart" placeholder="smart model (optional)"
+                   class="flex-1 min-w-[160px] bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+          </div>
+          <div class="flex gap-2">
+            <button id="btnSaveKey" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save key</button>
+            <button id="btnDeleteKey" class="px-3 py-2 rounded border border-slate-700 text-sm hover:bg-slate-800">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <h2 class="font-medium text-white">Spend limit</h2>
+        <p class="text-sm text-slate-400 mt-1">
+          A hard ceiling checked before every API call, including between retries.
+          Keep it low while you are still tuning.
+        </p>
+        <div class="mt-3 flex items-center gap-2">
+          <span class="text-slate-400">$</span>
+          <input id="limitInput" type="number" step="0.5" min="0"
+                 class="w-24 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
+          <button id="btnSaveLimit" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm">Save</button>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <h2 class="font-medium text-white">Job filters</h2>
+        <p class="text-sm text-slate-400 mt-1">
+          Applied for free before any model runs, so tuning this is the cheapest way to
+          improve results. One value per line.
+        </p>
+        <div class="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+          <label class="block">Titles must include
+            <textarea id="tInclude" rows="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+          <label class="block">Titles must exclude
+            <textarea id="tExclude" rows="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+          <label class="block">Locations
+            <textarea id="tLocations" rows="3" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+          <div class="space-y-2">
+            <label class="block">Years of experience
+              <input id="tYoe" type="number" step="0.5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2"></label>
+            <label class="block">Minimum salary (LPA)
+              <input id="tSalary" type="number" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2"></label>
+          </div>
+        </div>
+        <button id="btnSaveTargets" class="mt-4 px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save filters</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- job progress toast -->
+<div id="jobToast" class="hidden fixed bottom-4 right-4 z-40 w-full max-w-md">
+  <div class="rounded-lg border border-slate-700 bg-slate-900 shadow-2xl p-4">
+    <div class="flex items-center gap-2">
+      <div id="jobSpinner" class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
+      <div id="jobLabel" class="text-sm font-medium text-white"></div>
+      <div id="jobProgress" class="ml-auto text-xs text-slate-500"></div>
+      <button id="jobClose" class="text-slate-500 hover:text-slate-200 text-lg leading-none">&times;</button>
+    </div>
+    <div class="mt-2 h-1 bg-slate-800 rounded overflow-hidden">
+      <div id="jobBar" class="h-full bg-indigo-500 transition-all" style="width:0%"></div>
+    </div>
+    <pre id="jobLog" class="log mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-slate-400"></pre>
+    <div id="jobError" class="hidden mt-2 text-sm text-rose-400"></div>
+  </div>
+</div>
+
+<!-- drawer -->
+<div id="drawer" class="hidden fixed inset-0 z-30">
+  <div id="drawerBg" class="absolute inset-0 bg-black/60"></div>
+  <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-slate-900 border-l border-slate-800 overflow-y-auto">
+    <div class="sticky top-0 bg-slate-900 border-b border-slate-800 px-5 py-3 flex items-center">
+      <div id="drawerTitle" class="font-medium text-white text-sm"></div>
+      <button id="drawerClose" class="ml-auto text-slate-500 hover:text-slate-200 text-lg leading-none">&times;</button>
+    </div>
+    <div id="drawerBody" class="p-5 space-y-4 text-sm"></div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TICK = `<svg viewBox="0 0 20 20" class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { credentials: 'same-origin', ...opts });
+  const body = await r.json().catch(() => ({}));
+  if (r.status === 401) { showAuth(); throw new Error(body.detail || 'Sign in to continue'); }
+  if (!r.ok) throw new Error(body.detail || `Request failed (${r.status})`);
+  return body;
+}
+const post = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(b || {}) });
+
+/* ---------------- auth ---------------- */
+let mode = 'login';
+function setMode(m) {
+  mode = m;
+  const on = 'bg-slate-800 text-white', off = 'text-slate-500 hover:text-slate-300';
+  $('#tabLogin').className  = `authtab flex-1 py-2 rounded ${m === 'login' ? on : off}`;
+  $('#tabSignup').className = `authtab flex-1 py-2 rounded ${m === 'signup' ? on : off}`;
+  $('#authSubmit').textContent = m === 'login' ? 'Sign in' : 'Create account';
+  $('#pwHint').classList.toggle('hidden', m === 'login');
+  $('#authError').classList.add('hidden');
+}
+$('#tabLogin').onclick = () => setMode('login');
+$('#tabSignup').onclick = () => setMode('signup');
+
+$('#authForm').onsubmit = async (e) => {
+  e.preventDefault();
+  $('#authSubmit').disabled = true;
+  $('#authError').classList.add('hidden');
+  try {
+    await post(`/api/auth/${mode}`, { email: $('#email').value, password: $('#password').value });
+    await boot();
+  } catch (err) {
+    $('#authError').textContent = err.message;
+    $('#authError').classList.remove('hidden');
+  } finally {
+    $('#authSubmit').disabled = false;
+  }
+};
+$('#btnLogout').onclick = async () => { await post('/api/auth/logout'); showAuth(); };
+
+function showAuth() {
+  $('#appView').classList.add('hidden');
+  $('#authView').classList.remove('hidden');
+  setMode('login');
+}
+function showApp() {
+  $('#authView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+}
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(name) {
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.add('hidden'));
+  $(`#tab-${name}`).classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(b => {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('border-indigo-500', on);
+    b.classList.toggle('text-white', on);
+    b.classList.toggle('text-slate-500', !on);
+  });
+  if (name === 'matches') loadMatches();
+  if (name === 'pipeline') loadPipeline();
+  if (name === 'cost') loadCost();
+}
+
+/* ---------------- jobs ---------------- */
+let poller = null;
+async function runJob(kind, body, onDone) {
+  const { job_id } = await post(`/api/jobs/${kind}`, body);
+  $('#jobToast').classList.remove('hidden');
+  $('#jobError').classList.add('hidden');
+  $('#jobLog').textContent = '';
+  $('#jobSpinner').className = 'w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse';
+  clearInterval(poller);
+
+  return new Promise((resolve) => {
+    poller = setInterval(async () => {
+      let j;
+      try {
+        // Nudge the worker: a long job continues without waiting for the scheduler.
+        j = await post(`/api/jobs/${job_id}/resume`);
+      } catch (e) { clearInterval(poller); return; }
+
+      $('#jobLabel').textContent = j.label;
+      $('#jobProgress').textContent = j.units_total > 1
+        ? `${j.units_done}/${j.units_total}` : '';
+      $('#jobBar').style.width = j.progress + '%';
+      $('#jobLog').textContent = (j.log || []).join('\n');
+      $('#jobLog').scrollTop = 1e6;
+
+      if (j.state === 'done' || j.state === 'error') {
+        clearInterval(poller);
+        $('#jobSpinner').className = 'w-2.5 h-2.5 rounded-full ' +
+          (j.state === 'error' ? 'bg-rose-500' : 'bg-emerald-500');
+        if (j.error) {
+          $('#jobError').textContent = j.error;
+          $('#jobError').classList.remove('hidden');
+        }
+        await refresh();
+        if (j.state === 'done' && onDone) onDone(j.result);
+        resolve(j);
+      }
+    }, 1500);
+  });
+}
+$('#jobClose').onclick = () => $('#jobToast').classList.add('hidden');
+
+document.querySelectorAll('.jobbtn').forEach(b => b.onclick = async () => {
+  const kind = b.dataset.job;
+  const body = {};
+  if (kind === 'score') body.limit = +$('#scoreLimit').value;
+  if (kind === 'gaps') {
+    body.role = $('#gapRole').value.trim();
+    if (!body.role) { alert('Describe the role you are targeting.'); return; }
+  }
+  try {
+    await runJob(kind, body);
+    if (kind === 'score') showTab('matches');
+  } catch (e) { alert(e.message); }
+});
+
+/* ---------------- state ---------------- */
+let ME = null;
+async function refresh() {
+  ME = await api('/api/me');
+  const m = ME;
+  $('#userEmail').textContent = m.email;
+  $('#spendText').textContent = '$' + m.spend.used.toFixed(4);
+  const pct = m.spend.limit ? Math.min(100, m.spend.used / m.spend.limit * 100) : 0;
+  $('#spendBar').style.width = pct + '%';
+  $('#spendBar').className = 'h-full ' + (pct > 80 ? 'bg-rose-500' : 'bg-emerald-500');
+
+  const next = await api('/api/next');
+  $('#nextActions').innerHTML = next.actions.length ? next.actions.map((a, i) => `
+    <div class="flex gap-2">
+      <span class="text-indigo-400 font-medium">${i + 1}.</span>
+      <div><div class="text-slate-100">${esc(a.label)}</div>
+      <div class="text-xs text-slate-500">${esc(a.why)}</div></div>
+    </div>`).join('') : '<div class="text-slate-400">Nothing outstanding.</div>';
+
+  $('#docList').innerHTML = m.documents.map(d => `
+    <span class="px-2 py-1 rounded bg-slate-800 text-xs flex items-center gap-2">
+      ${esc(d.filename)} <span class="text-slate-600">${(d.chars/1000).toFixed(1)}k chars</span>
+      <button data-del="${esc(d.filename)}" class="text-slate-500 hover:text-rose-400 leading-none">&times;</button>
+    </span>`).join('') || '<span class="text-xs text-slate-500">No documents yet</span>';
+  $('#docList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    await api('/api/documents/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
+    refresh();
+  });
+
+  dot('#s1dot', m.documents.length > 0);
+  dot('#s2dot', !!m.profile);
+  dot('#s3dot', m.postings_total > 0);
+  dot('#s4dot', m.scored_total > 0);
+
+  $('#postingCount').textContent = m.postings_total
+    ? `${m.postings_total.toLocaleString()} postings available · ${m.scored_total} scored by you` : '';
+
+  $('#profileBox').innerHTML = !m.profile ? '' : `
+    <div class="rounded border border-slate-800 bg-slate-950/60 p-3">
+      <div class="text-sm text-white">${esc(m.profile.name || 'unknown')} · ${esc(m.profile.seniority || '?')} · ${m.profile.years} yrs</div>
+      <div class="text-xs text-slate-500 mt-0.5">${esc(m.profile.headline || '')}</div>
+      <div class="text-xs mt-2"><span class="text-emerald-400">${m.profile.skills_proven} evidence-backed</span>
+        <span class="text-slate-500">/ ${m.profile.skills_total} skills · ${m.profile.achievements} achievements</span></div>
+      <div class="mt-3 flex flex-wrap gap-1.5">
+        ${m.profile.skills.map(k => `<span class="px-1.5 py-0.5 rounded text-xs ${k.proven
+          ? 'bg-emerald-950 text-emerald-300 border border-emerald-900'
+          : 'bg-slate-800 text-slate-500 border border-slate-700'}">${esc(k.name)} ${k.level}</span>`).join('')}
+      </div>
+      <div class="text-xs text-slate-500 mt-3">Grey = no evidence found. Never claimed on a tailored resume.</div>
+    </div>`;
+
+  const g = m.gap_report;
+  $('#gapBox').innerHTML = !g ? '' : `
+    <div class="rounded border border-slate-800 bg-slate-950/60 p-3">
+      <div class="text-sm">readiness
+        <b class="${g.readiness_pct >= 70 ? 'text-emerald-400' : g.readiness_pct >= 45 ? 'text-amber-400' : 'text-rose-400'}">${g.readiness_pct}%</b>
+      </div>
+      <div class="text-sm text-slate-400 mt-1">${esc(g.verdict)}</div>
+      ${(g.gaps || []).filter(x => x.severity === 'blocking').map(x => `
+        <div class="mt-2"><span class="text-rose-400 text-xs uppercase">blocking</span>
+        <div class="text-slate-200">${esc(x.skill)}</div>
+        <div class="text-xs text-slate-500">${esc(x.fastest_proof)}</div></div>`).join('')}
+    </div>`;
+
+  // settings
+  $('#keyStatus').innerHTML = m.key
+    ? `<span class="text-emerald-400">${esc(m.key.provider)} key saved (${esc(m.key.hint)})</span>
+       <span class="text-slate-500">· ${esc(m.key.model_cheap)} / ${esc(m.key.model_smart)}</span>`
+    : '<span class="text-amber-400">No key saved. Agents cannot run.</span>';
+  $('#limitInput').value = m.spend.limit;
+  if (m.key) { $('#provider').value = m.key.provider; }
+}
+function dot(sel, done) {
+  const el = $(sel);
+  el.className = `mt-0.5 w-6 h-6 shrink-0 rounded-full text-white text-xs grid place-items-center font-semibold ${done ? 'bg-emerald-600' : 'bg-slate-700'}`;
+  el.innerHTML = done ? TICK : el.dataset.n;
+}
+
+$('#fileInput').onchange = async (e) => {
+  const fd = new FormData();
+  [...e.target.files].forEach(f => fd.append('files', f));
+  try { await api('/api/documents', { method: 'POST', body: fd }); }
+  catch (err) { alert(err.message); }
+  e.target.value = ''; refresh();
+};
+
+/* ---------------- matches ---------------- */
+async function loadMatches() {
+  const { matches } = await api('/api/matches?limit=40&min_score=' + (+$('#minScore').value || 0));
+  $('#matchList').innerHTML = matches.length ? matches.map(m => {
+    const colour = m.score >= 70 ? 'text-emerald-400' : m.score >= 55 ? 'text-amber-400' : 'text-slate-500';
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div class="flex items-start gap-3">
+        <div class="text-2xl font-semibold ${colour} w-12 text-right">${m.score}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-white text-sm font-medium">${esc(m.title)}</div>
+          <div class="text-xs text-slate-500">${esc(m.company)} · ${esc(m.location || '—')}
+            ${m.stage ? `· <span class="text-indigo-400">${esc(m.stage)}</span>` : ''}</div>
+          <div class="text-sm text-slate-400 mt-2">${esc(m.reasoning)}</div>
+          ${m.missing.length ? `<div class="text-xs text-rose-400/70 mt-1.5">missing: ${m.missing.slice(0,6).map(esc).join(', ')}</div>` : ''}
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button data-act="tailor" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Tailor resume</button>
+            <button data-act="outreach" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Outreach</button>
+            <button data-act="prep" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Interview prep</button>
+            <button data-act="intel" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Company intel</button>
+            <button data-act="comp" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Salary band</button>
+            <a href="${esc(m.url)}" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded border border-slate-700 text-xs hover:bg-slate-800">Open posting</a>
+          </div>
+        </div></div></div>`;
+  }).join('') : '<div class="text-sm text-slate-500">Nothing scored yet — run step 4.</div>';
+
+  const RENDER = { tailor: renderResume, outreach: renderOutreach, prep: renderPrep,
+                   intel: renderIntel, comp: renderComp };
+  const TITLE = { tailor: 'Tailored resume', outreach: 'Outreach pack',
+                  prep: 'Interview prep', intel: 'Company briefing', comp: 'Salary band' };
+  document.querySelectorAll('.act').forEach(b => b.onclick = async () => {
+    try {
+      const j = await runJob(b.dataset.act, { external_id: b.dataset.id });
+      if (j.state === 'done') openDrawer(TITLE[b.dataset.act], RENDER[b.dataset.act](j.result));
+      loadMatches();
+    } catch (e) { alert(e.message); }
+  });
+}
+$('#minScore').onchange = loadMatches;
+$('#btnShortlist').onclick = async () => {
+  const r = await post('/api/shortlist', { min_score: 70, limit: 10 });
+  alert(`${r.added} job(s) added to your pipeline.`);
+  loadMatches(); refresh();
+};
+
+/* ---------------- renderers ---------------- */
+function renderResume(r) {
+  const v = r.violations || [], res = r.resume;
+  return `${v.length ? `<div class="rounded border border-rose-900 bg-rose-950/40 p-3">
+      <div class="text-rose-300 font-medium">Fabrication check failed — ${v.length} issue(s)</div>
+      <ul class="mt-2 space-y-1 text-rose-200/80 text-xs">${v.map(x => `<li>• ${esc(x)}</li>`).join('')}</ul>
+      <div class="text-xs text-rose-200/60 mt-2">Do not send this. Either the model invented
+      something, or your brag document is missing the achievement it drew on.</div></div>`
+    : `<div class="rounded border border-emerald-900 bg-emerald-950/30 p-3 text-emerald-300 text-xs">
+       Fabrication check passed — every bullet traces to a real achievement.</div>`}
+    <div class="text-white font-medium">${esc(res.headline)}</div>
+    <p class="text-slate-400">${esc(res.summary)}</p>
+    <ul class="space-y-2">${res.bullets.map(b => `<li>
+      <div class="text-slate-200">• ${esc(b.text)}</div>
+      <div class="text-xs text-slate-600 ml-3">from: ${esc(b.source_achievement)}</div></li>`).join('')}</ul>
+    <div class="text-xs text-slate-500">Skills: ${(res.skills_line||[]).map(esc).join(', ')}</div>`;
+}
+function block(t, b) {
+  return `<div><div class="text-xs uppercase tracking-wide text-slate-500 mb-1">${esc(t)}</div>
+    <div class="rounded bg-slate-950/60 border border-slate-800 p-3 whitespace-pre-wrap text-slate-300">${esc(b)}</div></div>`;
+}
+function renderOutreach(p) {
+  return block('Cover letter', p.cover_letter)
+    + block(`Recruiter DM (${(p.recruiter_dm||'').length} chars)`, p.recruiter_dm)
+    + block('Hiring manager email — ' + p.hm_email_subject, p.hm_email)
+    + block('Follow-up (after 5-7 days)', p.followup_message);
+}
+function renderPrep(b) {
+  return `<div><div class="text-xs uppercase tracking-wide text-rose-400 mb-1">Where you will get caught out</div>
+    <ul class="space-y-1 text-slate-300">${(b.weak_spots||[]).map(w => `<li>• ${esc(w)}</li>`).join('')}</ul></div>
+    ${(b.likely_questions||[]).map(q => `<div>
+      <div class="text-slate-200">${esc(q.question)} <span class="text-xs text-slate-600">[${esc(q.kind)}]</span></div>
+      <div class="text-xs text-slate-500 mt-0.5">Really testing: ${esc(q.why_asked)}</div>
+      <div class="text-xs text-slate-400 mt-1">${esc(q.answer_outline)}</div></div>`).join('')}`;
+}
+function renderIntel(i) {
+  return `<div class="text-xs text-amber-400">Confidence: ${esc(i.confidence)} — verify anything
+    time-sensitive yourself.</div>${block('What they do', i.what_they_do)}
+    ${(i.likely_interview_process||[]).length ? block('Likely process', i.likely_interview_process.join('\n')) : ''}
+    ${(i.risks||[]).length ? block('Risks', i.risks.join('\n')) : ''}
+    ${(i.questions_to_ask_them||[]).length ? block('Ask them', i.questions_to_ask_them.join('\n')) : ''}`;
+}
+function renderComp(c) {
+  return `<div class="text-lg text-white">${c.base_low}–${c.base_high} ${esc(c.unit)}
+    <span class="text-sm text-slate-500">base</span></div>
+    <div class="text-slate-300">Total ${c.total_low}–${c.total_high} ${esc(c.unit)}</div>
+    <div class="text-white">Ask: <b>${c.recommended_ask} ${esc(c.unit)}</b></div>
+    <div class="text-xs text-slate-500">Confidence ${esc(c.confidence)} — ${esc(c.basis)}</div>
+    ${c.confidence === 'low' ? `<div class="text-xs text-amber-400">Treat this as a prior, not market
+    data. Cross-check on Levels.fyi or AmbitionBox before quoting a number.</div>` : ''}`;
+}
+
+/* ---------------- pipeline ---------------- */
+async function loadPipeline() {
+  const p = await api('/api/pipeline');
+  $('#funnelRow').innerHTML = Object.entries(p.funnel).filter(([, v]) => v).map(([k, v]) =>
+    `<div class="px-3 py-2 rounded bg-slate-900 border border-slate-800">
+      <div class="text-lg font-semibold text-white">${v}</div>
+      <div class="text-xs text-slate-500">${esc(k)}</div></div>`).join('')
+    || '<div class="text-sm text-slate-500">Pipeline is empty — shortlist some matches.</div>';
+
+  $('#ratesBox').innerHTML = p.rates.callback_rate_pct !== null
+    ? `Callback rate: <b class="text-white">${p.rates.callback_rate_pct}%</b>`
+    : `<span class="text-slate-500">${p.rates.applied_total} applications — a rate needs 10+ to mean anything.</span>`;
+
+  $('#appList').innerHTML = p.applications.map(a => `
+    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3 flex items-center gap-3">
+      <div class="text-sm text-slate-500 w-8 text-right">${a.score ?? '—'}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm text-white truncate">${esc(a.title)}</div>
+        <div class="text-xs text-slate-500">${esc(a.company)} · ${a.days}d in ${esc(a.stage)}
+          ${p.needs_followup.includes(a.id) ? '<span class="text-amber-400">· follow up</span>' : ''}
+          ${p.ghosts.includes(a.id) ? '<span class="text-rose-400">· likely ghosted</span>' : ''}</div>
+      </div>
+      <select data-stage="${esc(a.id)}" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs">
+        ${p.stages.map(s => `<option ${s === a.stage ? 'selected' : ''}>${s}</option>`).join('')}
+      </select></div>`).join('');
+
+  document.querySelectorAll('[data-stage]').forEach(sel => sel.onchange = async () => {
+    try { await post('/api/stage/' + sel.dataset.stage, { to: sel.value }); }
+    catch (e) { alert(e.message); }
+    loadPipeline(); refresh();
+  });
+}
+
+/* ---------------- cost ---------------- */
+async function loadCost() {
+  const c = await api('/api/spend');
+  $('#costBox').innerHTML = `
+    <div class="text-2xl font-semibold text-white">$${c.total.toFixed(4)}
+      <span class="text-sm text-slate-500 font-normal">of $${c.limit.toFixed(2)} limit</span></div>
+    ${c.by_agent.length ? `<table class="mt-4 w-full text-sm"><thead class="text-xs text-slate-500">
+      <tr class="text-left"><th class="py-1">agent</th><th>model</th><th class="text-right">calls</th>
+      <th class="text-right">in</th><th class="text-right">out</th><th class="text-right">cost</th></tr></thead>
+      <tbody>${c.by_agent.map(r => `<tr class="border-t border-slate-800">
+        <td class="py-1.5 text-slate-300">${esc(r.agent)}</td><td class="text-slate-500">${esc(r.model)}</td>
+        <td class="text-right">${r.calls}</td><td class="text-right text-slate-500">${(r.tin||0).toLocaleString()}</td>
+        <td class="text-right text-slate-500">${(r.tout||0).toLocaleString()}</td>
+        <td class="text-right text-slate-200">$${(r.cost||0).toFixed(4)}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="text-sm text-slate-500 mt-2">No API calls yet.</div>'}`;
+}
+
+/* ---------------- settings ---------------- */
+$('#btnSaveKey').onclick = async () => {
+  try {
+    await post('/api/settings/key', {
+      provider: $('#provider').value, api_key: $('#apiKey').value,
+      model_cheap: $('#modelCheap').value || null, model_smart: $('#modelSmart').value || null,
+    });
+    $('#apiKey').value = '';
+    refresh();
+  } catch (e) { alert(e.message); }
+};
+$('#btnDeleteKey').onclick = async () => {
+  if (!confirm('Remove your stored API key?')) return;
+  await api('/api/settings/key', { method: 'DELETE' }); refresh();
+};
+$('#btnSaveLimit').onclick = async () => {
+  await post('/api/settings/limit', { spend_limit_usd: +$('#limitInput').value }); refresh();
+};
+const lines = (el) => el.value.split('\n').map(s => s.trim()).filter(Boolean);
+$('#btnSaveTargets').onclick = async () => {
+  await post('/api/settings/targets', { config: {
+    title_include: lines($('#tInclude')), title_exclude: lines($('#tExclude')),
+    locations: lines($('#tLocations')), remote_ok: true, min_description_chars: 300,
+    constraints: { years_of_experience: +$('#tYoe').value || 0,
+                   minimum_salary_inr_lpa: +$('#tSalary').value || 0 },
+  }});
+  alert('Filters saved. They apply on your next scoring run.');
+};
+
+/* ---------------- drawer ---------------- */
+function openDrawer(title, html) {
+  $('#drawerTitle').textContent = title;
+  $('#drawerBody').innerHTML = html;
+  $('#drawer').classList.remove('hidden');
+}
+$('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
+
+/* ---------------- boot ---------------- */
+async function boot() {
+  try {
+    await refresh();
+    showApp();
+    showTab('home');
+  } catch (e) { showAuth(); }
+}
+boot();
+</script>
+</body>
+</html>

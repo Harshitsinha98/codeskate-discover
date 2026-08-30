@@ -1,0 +1,9 @@
+.venv/
+data/
+web/
+docs/
+.kiro/
+*.db
+__pycache__/
+.ruff_cache/
+.pytest_cache/
