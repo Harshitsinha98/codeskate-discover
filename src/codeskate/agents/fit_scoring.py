@@ -49,7 +49,13 @@ def load_targets() -> dict[str, Any]:
 
 
 def _norm(s: str | None) -> str:
-    return re.sub(r"[^a-z0-9 ]", " ", (s or "").lower())
+    """Lowercase, strip punctuation, and pad with spaces.
+
+    The padding lets a config pattern use explicit word boundaries — " sr " will
+    match "Sr. Software Engineer" without also matching "usr" or "disaster".
+    """
+    cleaned = re.sub(r"[^a-z0-9 ]", " ", (s or "").lower())
+    return f" {re.sub(r'  +', ' ', cleaned).strip()} "
 
 
 def prefilter(jobs: list[sqlite3.Row], targets: dict[str, Any]) -> list[sqlite3.Row]:
@@ -74,16 +80,53 @@ def prefilter(jobs: list[sqlite3.Row], targets: dict[str, Any]) -> list[sqlite3.
         if locations:
             loc = _norm(job["location"])
             in_target = any(l in loc for l in locations)
-            # "Remote" is region-scoped in practice: "Remote, USA" is useless to a
-            # candidate who cannot work in the USA. Only treat remote as a match
-            # when it isn't pinned to a region we're excluded from.
             is_remote = "remote" in loc or "remote" in title
-            wrong_region = any(r in loc for r in remote_exclude)
-            if not (in_target or (remote_ok and is_remote and not wrong_region)):
+            if not (in_target or (remote_ok and is_remote and _remote_is_open(loc, locations, remote_exclude))):
                 continue
 
         kept.append(job)
     return kept
+
+
+# Words that describe the arrangement rather than the place.
+_ARRANGEMENT = {
+    "remote", "remotely", "friendly", "first", "hybrid", "onsite", "on", "site",
+    "office", "flexible", "anywhere", "global", "worldwide", "distributed", "or",
+    "and", "based", "in", "eligible", "locations", "location", "multiple",
+}
+
+
+def _remote_is_open(loc: str, locations: list[str], explicit_exclude: list[str]) -> bool:
+    """Is this remote role open to our region?
+
+    "Remote" alone is genuinely global. "Remote - Poland" is not, and neither is
+    "Boston, MA; Remote-Friendly". Enumerating every excluded country is a losing
+    game, so instead: strip the arrangement words and see whether any *place* is
+    named. If one is, it has to be a place we target.
+    """
+    if any(r in loc for r in explicit_exclude):
+        return False
+
+    remainder = {w for w in loc.split() if w not in _ARRANGEMENT and not w.isdigit()}
+    if not remainder:
+        return True  # "Remote" with no region attached — open to anyone
+
+    targets = {w for loc_name in locations for w in loc_name.split()}
+    return any(_place_matches(w, targets) for w in remainder)
+
+
+def _place_matches(word: str, targets: set[str]) -> bool:
+    """Exact match, or substring only for words long enough to be meaningful.
+
+    Bidirectional substring matching on short tokens is a trap: "Remote U.S."
+    tokenises to {u, s}, and "u" is a substring of "pune". Require length 4+
+    before allowing partial matches.
+    """
+    if word in targets:
+        return True
+    if len(word) < 4:
+        return False
+    return any(len(t) >= 4 and (word in t or t in word) for t in targets)
 
 
 def score_job(llm: LLM, profile_brief: str, job: sqlite3.Row, constraints: str) -> FitScore:

@@ -12,8 +12,18 @@ title_include:
   - developer
 
 # ...and none of these. Add aggressively — every exclusion is free savings.
+#
+# `senior` and `lead` are excluded because the profile below is 3 YOE. A live
+# scoring run against real postings confirmed why: five "Senior Software
+# Engineer" roles all scored 5-35/100, every one rejected for the same reason
+# (they wanted 6-8+ years). Those were five LLM calls spent to learn something
+# a free string match already knew. If you are genuinely senior, delete these
+# two lines.
 title_exclude:
   - intern
+  - senior
+  - " sr "          # postings abbreviate: "Sr Software Engineer", "Sr. Backend Dev"
+  - lead
   - director
   - vice president
   - principal

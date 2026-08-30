@@ -56,9 +56,21 @@ every skill. Agent 3 reports what's actually blocking you, and for each gap the
 7 | Compensation | `comp <job>` | ~$0.004 |
 
 Agent 4 pulls from public ATS endpoints — **27 verified boards returned ~5,800
-postings for $0**. Agent 5 runs a free rule-based prefilter that dropped **98% of
-5,797 jobs** before any LLM call. Agent 7 extracts a stated salary range with regex
-first, and only estimates when the posting doesn't say.
+postings for $0**. Agent 5 runs a free rule-based prefilter that cut **5,797 jobs
+to 5** before any LLM call, at zero cost. Agent 7 extracts a stated salary range
+with regex first, and only estimates when the posting doesn't say.
+
+The prefilter is worth tuning carefully, because it is free and the LLM is not.
+Two rules earn most of that reduction:
+
+- **Seniority exclusions.** Against real postings, five "Senior Software Engineer"
+  roles all scored 5-35/100 for a 3-YOE profile, every one rejected for wanting
+  6-8+ years. That was five paid calls to learn what a string match already knew.
+  Note that postings abbreviate — `senior` alone misses "Sr." and "Sr".
+- **Region-aware remote.** "Remote" alone is global; "Remote - Poland" and
+  "Boston, MA; Remote-Friendly" are not. Rather than enumerate every excluded
+  country, the filter strips arrangement words and checks whether any *place* is
+  named — if one is, it has to be a place you target.
 
 ### Pod 3 — Application Execution
 
@@ -119,6 +131,12 @@ evidence-backed, and every number in a bullet must appear in the source facts.
 `verify()` is independent of the prompt, so it still catches drift when the model
 stops obeying. One fabricated line surviving to a background check ends the
 product — that risk belongs in the type system, not in a paragraph of instructions.
+
+It earns its place. On the first real run against `gpt-5.6-terra` it caught the
+model writing *"optimised p99 by 85%"* and *"reduced abandonment by 2.4 percentage
+points"* — both arithmetically correct derivations of 800ms→120ms and 4%→1.6%, and
+neither present in the source. The prompt now forbids computing new figures, and
+the checker still enforces it.
 
 ### 2. The pipeline state machine is the spine
 
@@ -228,6 +246,14 @@ After `codeskate report`, read the top 20 and answer honestly:
   `agents/fit_scoring.py`. Polished applications to jobs you don't want are worth
   nothing.
 - **Yes** → `codeskate shortlist` and work the pipeline.
+
+There's a third answer worth naming: *"these are the right kind of job, but none of
+them fit me."* That means the filters work and the **company list is the
+bottleneck**. The 27 boards shipped here are US-centric — running them against an
+India-based Python profile surfaced mostly Ruby, Go and Workato roles, correctly
+scored 24-43/100. No prompt change fixes that. Add companies you would actually
+join, in your market, using your stack; `config/companies.yaml` is the highest-
+leverage file in the repo.
 
 Record your **baseline callback rate** before using the system. Without it you
 can't tell whether this worked or you got lucky — and that number is the entire

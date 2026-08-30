@@ -29,7 +29,12 @@ Rules you must not break:
 5. Achievements should be reusable, self-contained accomplishment statements —
    these become the raw material for tailoring later.
 6. Be conservative on total_years_experience: count professional work only,
-   not education."""
+   not education.
+7. Fill in `years` for every skill by adding up the employment periods where it
+   was actually used. If someone held a role from 2023-06 to now and that role
+   used Python, Python has roughly that many years. Leaving `years` at 0 makes
+   the profile useless to the scoring agent, which weighs recency and depth.
+8. Set `last_used_year` from the role's end date, or the current year if ongoing."""
 
 
 def build(llm: LLM, raw_text: str) -> SkillGraph:
@@ -45,17 +50,25 @@ def build(llm: LLM, raw_text: str) -> SkillGraph:
 
 
 def profile_brief(graph: SkillGraph, max_skills: int = 40) -> str:
-    """Compact profile text reused as the cached prefix for every fit-score call."""
+    """Compact profile text reused as the cached prefix for every downstream call.
+
+    The PROVEN/UNPROVEN marker is load-bearing. Without it, consuming agents
+    cannot tell an evidenced skill from a self-claimed one, and the gap analysis
+    agent ends up flagging well-evidenced skills as unverified.
+    """
     skills = sorted(graph.skills, key=lambda s: (-s.level, s.name))[:max_skills]
     lines = [
         f"Seniority: {graph.seniority or 'unknown'}",
         f"Years of experience: {graph.total_years_experience}",
         f"Headline: {graph.headline or 'n/a'}",
         "",
-        "SKILLS (name | level/5 | years):",
+        "SKILLS (name | level/5 | years | PROVEN means backed by a concrete achievement):",
     ]
-    lines += [f"- {s.name} | {s.level} | {s.years}" for s in skills]
-    lines += ["", "KEY ACHIEVEMENTS:"]
+    for s in skills:
+        status = "PROVEN" if s.evidence else "UNPROVEN — self-claimed only"
+        lines.append(f"- {s.name} | {s.level} | {s.years:g} | {status}")
+
+    lines += ["", "KEY ACHIEVEMENTS (the evidence behind the PROVEN skills):"]
     lines += [
         f"- {a.headline}" + (f" [{a.metric}]" if a.metric else "")
         for a in graph.achievements[:15]
