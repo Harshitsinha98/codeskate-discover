@@ -45,3 +45,79 @@ lever:
 ashby:
   - linear
   - vanta
+
+# ---------------------------------------------------------------------------
+# Workday — how most large MNCs publish, including their India requisitions.
+# Greenhouse/Lever/Ashby barely cover MNCs, so without this section the feed
+# skews to US startups.
+#
+# Two calls per posting (list, then detail for the JD), so narrow it:
+#   search  one term or a list; Workday filters server-side, for free.
+#           Including "India" in the term cuts most of the noise immediately.
+#   max     cap per search term. 40 is plenty while tuning.
+#
+# Finding the three values: open the careers site and read the URL —
+#   https://TENANT.WD.myworkdayjobs.com/SITE
+# e.g. nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+#
+# All ten below were verified live on 2026-08-30.
+workday:
+  - tenant: nvidia
+    wd: wd5
+    site: NVIDIAExternalCareerSite
+    search: ["site reliability India", "technical support engineer India"]
+    max: 40
+
+  - tenant: salesforce
+    wd: wd12
+    site: External_Career_Site
+    search: ["site reliability India", "technical support engineer India"]
+    max: 40
+
+  - tenant: adobe
+    wd: wd5
+    site: external_experienced
+    search: ["site reliability India", "cloud operations India"]
+    max: 40
+
+  - tenant: accenture
+    wd: wd103
+    site: AccentureCareers
+    search: ["site reliability engineer India", "cloud engineer India"]
+    max: 40
+
+  - tenant: paypal
+    wd: wd1
+    site: jobs
+    search: ["site reliability India", "production support India"]
+    max: 40
+
+  - tenant: micron
+    wd: wd1
+    site: External
+    search: ["site reliability India", "IT operations India"]
+    max: 40
+
+  - tenant: thomsonreuters
+    wd: wd5
+    site: External_Career_Site
+    search: ["site reliability India", "cloud operations India"]
+    max: 40
+
+  - tenant: hitachi
+    wd: wd1
+    site: hitachi
+    search: ["site reliability India", "cloud engineer India"]
+    max: 40
+
+  - tenant: workday
+    wd: wd5
+    site: Workday
+    search: ["site reliability India", "technical support India"]
+    max: 40
+
+  - tenant: broadcom
+    wd: wd1
+    site: External_Career
+    search: ["site reliability India", "technical support India"]
+    max: 40
