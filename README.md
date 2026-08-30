@@ -18,17 +18,37 @@ one real person.
 ```bash
 uv venv --python 3.11
 uv pip install -e .
-
 cp .env.example .env          # add your API key
-codeskate doctor              # verify config + model IDs before spending
+```
 
-# put resume.pdf and brag.md in data/inbox/  (see docs/brag-template.md)
+### Web UI (recommended)
+
+```bash
+uvicorn app:app --app-dir web --reload --port 8000
+```
+
+Open <http://localhost:8000>. A four-step guided flow: upload your documents,
+build the skill graph, pull live jobs, score them. Then browse matches, tailor a
+resume, draft outreach, build an interview brief, and move applications through
+the pipeline — with a live spend meter in the header.
+
+Long operations run as background tasks with a streaming log, because discovery
+takes minutes. That is also why this cannot be dropped onto a serverless host
+as-is: it needs a process that stays alive and a filesystem that persists.
+
+### CLI (same agents, no browser)
+
+```bash
+codeskate doctor              # verify config + model IDs before spending
 codeskate next                # <- the only command you need to remember
 ```
 
 `codeskate next` is Agent 16. It inspects every piece of state and tells you the
 one thing to do now, with the exact command to run. Everything else exists so it
 has something to recommend. It costs nothing unless you pass `--brief`.
+
+The web app calls the same agent functions the CLI does. Nothing is reimplemented:
+the agents are the engine, and both of these are steering wheels.
 
 ---
 

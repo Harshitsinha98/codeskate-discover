@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeSkate — career agents</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  [x-cloak] { display: none; }
+</style>
+</head>
+<body class="h-full bg-slate-950 text-slate-200">
+
+<div class="min-h-full">
+  <!-- header -->
+  <header class="border-b border-slate-800 bg-slate-900/60 sticky top-0 z-20 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
+      <div class="font-semibold tracking-tight text-white">CodeSkate</div>
+      <div class="text-xs text-slate-500 hidden sm:block">18 agents working your job hunt</div>
+      <div class="ml-auto flex items-center gap-4 text-xs">
+        <div id="providerBadge" class="px-2 py-1 rounded bg-slate-800 text-slate-400">—</div>
+        <div class="text-right">
+          <div class="text-slate-500">spend</div>
+          <div id="spendText" class="font-medium text-slate-200">$0.0000</div>
+        </div>
+        <div class="w-24 h-1.5 bg-slate-800 rounded overflow-hidden">
+          <div id="spendBar" class="h-full bg-emerald-500" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="max-w-6xl mx-auto px-5 flex gap-1 text-sm">
+      <button data-tab="setup"    class="tab px-3 py-2 border-b-2 border-transparent">Get started</button>
+      <button data-tab="matches"  class="tab px-3 py-2 border-b-2 border-transparent">Matches</button>
+      <button data-tab="pipeline" class="tab px-3 py-2 border-b-2 border-transparent">Pipeline</button>
+      <button data-tab="cost"     class="tab px-3 py-2 border-b-2 border-transparent">Cost</button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-5 py-6">
+
+    <!-- ============ SETUP ============ -->
+    <section id="tab-setup" class="tabpane space-y-5">
+
+      <div id="nextPanel" class="rounded-lg border border-indigo-800/60 bg-indigo-950/30 p-4">
+        <div class="text-xs uppercase tracking-wide text-indigo-400 mb-2">Career manager says</div>
+        <div id="nextActions" class="space-y-2 text-sm text-slate-300">loading…</div>
+      </div>
+
+      <!-- step 1 -->
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s1dot" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-white text-xs grid place-items-center font-semibold">1</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Give it your documents</h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Your resume (PDF) and a brag document (.md) listing achievements <b>with numbers</b>.
+              Everything downstream is built from these — vague inputs produce a vague system.
+            </p>
+
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <label class="cursor-pointer px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
+                Choose files
+                <input id="fileInput" type="file" multiple accept=".pdf,.md,.txt" class="hidden">
+              </label>
+              <a href="/static/brag-template.md" download class="text-sm text-indigo-400 hover:underline">Download brag template</a>
+            </div>
+            <div id="inboxList" class="mt-3 flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- step 2 -->
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s2dot" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-white text-xs grid place-items-center font-semibold">2</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Build your skill graph <span class="text-xs text-slate-500 font-normal">Agents 1 + 2 · ~$0.02</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Extracts every skill with a level and, critically, <b>whether there is evidence for it</b>.
+              Skills without evidence are never claimed on a tailored resume.
+            </p>
+            <button id="btnProfile" class="mt-3 px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium disabled:opacity-40">
+              Build skill graph
+            </button>
+            <div id="profileBox" class="mt-4"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- step 3 -->
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s3dot" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-white text-xs grid place-items-center font-semibold">3</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Pull live jobs <span class="text-xs text-emerald-500 font-normal">Agent 4 · free</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Reads companies' own public job boards — Greenhouse, Lever, Ashby and Workday.
+              No scraping, no API keys, no cost. Takes 2–3 minutes.
+            </p>
+            <button id="btnDiscover" class="mt-3 px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">
+              Find jobs
+            </button>
+            <div id="jobsCount" class="mt-3 text-sm text-slate-400"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- step 4 -->
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <div class="flex items-start gap-3">
+          <div id="s4dot" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-white text-xs grid place-items-center font-semibold">4</div>
+          <div class="flex-1">
+            <h2 class="font-medium text-white">Score the matches <span class="text-xs text-slate-500 font-normal">Agent 5 · ~$0.006/job</span></h2>
+            <p class="text-sm text-slate-400 mt-1">
+              A free rule-based filter throws out the obvious misses first, then only the survivors
+              are scored — with a written reason for each.
+            </p>
+            <div class="mt-3 flex items-center gap-3">
+              <button id="btnScore" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">Score jobs</button>
+              <label class="text-sm text-slate-400">max
+                <input id="scoreLimit" type="number" value="25" min="1" max="200"
+                       class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200">
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- live log -->
+      <div id="taskCard" class="hidden rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+        <div class="flex items-center gap-2">
+          <div id="spinner" class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></div>
+          <div id="taskLabel" class="text-sm font-medium text-white"></div>
+          <button id="taskClose" class="ml-auto text-xs text-slate-500 hover:text-slate-300">dismiss</button>
+        </div>
+        <pre id="taskLog" class="log mt-3 max-h-56 overflow-auto whitespace-pre-wrap text-slate-400"></pre>
+        <div id="taskError" class="hidden mt-2 text-sm text-rose-400"></div>
+      </div>
+    </section>
+
+    <!-- ============ MATCHES ============ -->
+    <section id="tab-matches" class="tabpane hidden space-y-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 class="font-medium text-white">Scored matches</h2>
+        <label class="text-sm text-slate-400 ml-auto">min score
+          <input id="minScore" type="number" value="0" min="0" max="100"
+                 class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1">
+        </label>
+        <button id="btnShortlist" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
+          Shortlist strong ones
+        </button>
+      </div>
+      <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
+        <b>The only test that matters:</b> read the top 20 and ask — would I actually apply to 15 of these?
+        If not, the filters in <code class="text-amber-300">config/targets.yaml</code> need work. Building
+        anything on top of bad matching is wasted effort.
+      </div>
+      <div id="matchList" class="space-y-2"></div>
+    </section>
+
+    <!-- ============ PIPELINE ============ -->
+    <section id="tab-pipeline" class="tabpane hidden space-y-4">
+      <h2 class="font-medium text-white">Your pipeline</h2>
+      <div id="funnelRow" class="flex flex-wrap gap-2"></div>
+      <div id="ratesBox" class="text-sm text-slate-400"></div>
+      <div id="appList" class="space-y-2"></div>
+    </section>
+
+    <!-- ============ COST ============ -->
+    <section id="tab-cost" class="tabpane hidden space-y-4">
+      <h2 class="font-medium text-white">What you have actually spent</h2>
+      <p class="text-sm text-slate-400">
+        Logged per agent on every call. This is also how you learn your real cost per user
+        before there is anything to sell.
+      </p>
+      <div id="costBox"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- detail drawer -->
+<div id="drawer" class="hidden fixed inset-0 z-30">
+  <div id="drawerBg" class="absolute inset-0 bg-black/60"></div>
+  <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-slate-900 border-l border-slate-800 overflow-y-auto">
+    <div class="sticky top-0 bg-slate-900 border-b border-slate-800 px-5 py-3 flex items-center">
+      <div id="drawerTitle" class="font-medium text-white text-sm"></div>
+      <button id="drawerClose" class="ml-auto text-slate-500 hover:text-slate-200 text-lg leading-none">&times;</button>
+    </div>
+    <div id="drawerBody" class="p-5 space-y-4 text-sm"></div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = async (path, opts) => {
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || `${r.status}`);
+  return body;
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(name) {
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.add('hidden'));
+  $(`#tab-${name}`).classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(b => {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('border-indigo-500', on);
+    b.classList.toggle('text-white', on);
+    b.classList.toggle('text-slate-500', !on);
+  });
+  if (name === 'matches') loadMatches();
+  if (name === 'pipeline') loadPipeline();
+  if (name === 'cost') loadCost();
+}
+
+/* ---------- task polling ---------- */
+let pollTimer = null;
+async function runTask(promise) {
+  const { task_id } = await promise;
+  $('#taskCard').classList.remove('hidden');
+  $('#taskError').classList.add('hidden');
+  $('#taskLog').textContent = '';
+  $('#spinner').classList.add('animate-pulse');
+  clearInterval(pollTimer);
+  return new Promise((resolve) => {
+    pollTimer = setInterval(async () => {
+      const t = await api(`/api/task/${task_id}`);
+      $('#taskLabel').textContent = t.label;
+      $('#taskLog').textContent = t.log.join('\n');
+      $('#taskLog').scrollTop = 1e6;
+      if (t.state !== 'running') {
+        clearInterval(pollTimer);
+        $('#spinner').classList.remove('animate-pulse');
+        if (t.error) {
+          $('#taskError').textContent = t.error;
+          $('#taskError').classList.remove('hidden');
+          $('#spinner').classList.add('bg-rose-500');
+        } else {
+          $('#spinner').classList.remove('bg-rose-500');
+        }
+        refresh();
+        resolve(t);
+      }
+    }, 900);
+  });
+}
+$('#taskClose').onclick = () => $('#taskCard').classList.add('hidden');
+
+/* ---------- state ---------- */
+let STATE = null;
+async function refresh() {
+  STATE = await api('/api/state');
+  const s = STATE;
+
+  $('#providerBadge').textContent = `${s.provider} · ${s.models.smart}`;
+  $('#spendText').textContent = '$' + s.spend.used.toFixed(4);
+  $('#spendBar').style.width = Math.min(100, s.spend.used / s.spend.limit * 100) + '%';
+  $('#spendBar').className = 'h-full ' + (s.spend.used / s.spend.limit > 0.8 ? 'bg-rose-500' : 'bg-emerald-500');
+
+  $('#nextActions').innerHTML = s.next_actions.length
+    ? s.next_actions.map((a, i) => `
+        <div class="flex gap-2">
+          <span class="text-indigo-400 font-medium">${i + 1}.</span>
+          <div><div class="text-slate-100">${esc(a.label)}</div>
+          <div class="text-xs text-slate-500">${esc(a.why)}</div></div>
+        </div>`).join('')
+    : '<div class="text-slate-400">Nothing outstanding.</div>';
+
+  $('#inboxList').innerHTML = s.inbox_files.map(f => `
+    <span class="px-2 py-1 rounded bg-slate-800 text-xs flex items-center gap-2">
+      ${esc(f)} <button data-del="${esc(f)}" class="text-slate-500 hover:text-rose-400 leading-none">&times;</button>
+    </span>`).join('') || '<span class="text-xs text-slate-500">No files yet</span>';
+  $('#inboxList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    await fetch('/api/upload/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' }); refresh();
+  });
+
+  dot('#s1dot', s.inbox_files.length > 0);
+  dot('#s2dot', !!s.profile);
+  dot('#s3dot', s.jobs_total > 0);
+  dot('#s4dot', s.jobs_scored > 0);
+  $('#btnProfile').disabled = s.inbox_files.length === 0;
+
+  $('#jobsCount').textContent = s.jobs_total
+    ? `${s.jobs_total.toLocaleString()} jobs in the database · ${s.jobs_scored} scored`
+    : '';
+
+  if (s.profile) {
+    const p = s.profile;
+    $('#profileBox').innerHTML = `
+      <div class="rounded border border-slate-800 bg-slate-950/60 p-3">
+        <div class="text-sm text-white">${esc(p.name || 'unknown')} · ${esc(p.seniority || '?')} · ${p.years} yrs</div>
+        <div class="text-xs text-slate-500 mt-0.5">${esc(p.headline || '')}</div>
+        <div class="text-xs mt-2">
+          <span class="text-emerald-400">${p.skills_proven} evidence-backed</span>
+          <span class="text-slate-500"> / ${p.skills_total} skills · ${p.achievements} achievements</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          ${p.skills.map(k => `<span class="px-1.5 py-0.5 rounded text-xs ${k.proven
+            ? 'bg-emerald-950 text-emerald-300 border border-emerald-900'
+            : 'bg-slate-800 text-slate-500 border border-slate-700'}"
+            title="${k.proven ? 'evidence-backed' : 'self-claimed only — never used on a resume'}">${esc(k.name)} ${k.level}</span>`).join('')}
+        </div>
+        <div class="text-xs text-slate-500 mt-3">Grey = no evidence found. Those are never claimed on a tailored resume.</div>
+      </div>`;
+  }
+}
+// An inline SVG tick rather than a "✓" character: that glyph is missing from
+// some system font stacks and renders as a hollow box.
+const TICK = `<svg viewBox="0 0 20 20" class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
+function dot(sel, done) {
+  const el = $(sel);
+  el.className = `mt-0.5 w-6 h-6 shrink-0 rounded-full text-white text-xs grid place-items-center font-semibold ${
+    done ? 'bg-emerald-600' : 'bg-slate-700'}`;
+  el.innerHTML = done ? TICK : el.dataset.n;
+}
+document.querySelectorAll('[id$="dot"]').forEach((el, i) => el.dataset.n = String(i + 1));
+
+/* ---------- actions ---------- */
+$('#fileInput').onchange = async (e) => {
+  const fd = new FormData();
+  [...e.target.files].forEach(f => fd.append('files', f));
+  try { await api('/api/upload', { method: 'POST', body: fd }); } catch (err) { alert(err.message); }
+  e.target.value = ''; refresh();
+};
+$('#btnProfile').onclick = () => runTask(api('/api/profile', { method: 'POST' }));
+$('#btnDiscover').onclick = () => runTask(api('/api/discover', { method: 'POST' }));
+$('#btnScore').onclick = async () => {
+  await runTask(api('/api/score', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ limit: +$('#scoreLimit').value })
+  }));
+  showTab('matches');
+};
+
+/* ---------- matches ---------- */
+async function loadMatches() {
+  const { matches } = await api('/api/matches?limit=40&min_score=' + (+$('#minScore').value || 0));
+  $('#matchList').innerHTML = matches.length ? matches.map(m => {
+    const colour = m.score >= 70 ? 'text-emerald-400' : m.score >= 55 ? 'text-amber-400' : 'text-slate-500';
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div class="flex items-start gap-3">
+        <div class="text-2xl font-semibold ${colour} w-12 text-right">${m.score}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-white text-sm font-medium">${esc(m.title)}</div>
+          <div class="text-xs text-slate-500">${esc(m.company)} · ${esc(m.location || '—')}
+            ${m.stage ? `· <span class="text-indigo-400">${esc(m.stage)}</span>` : ''}</div>
+          <div class="text-sm text-slate-400 mt-2">${esc(m.reasoning)}</div>
+          ${m.missing.length ? `<div class="text-xs text-rose-400/70 mt-1.5">missing: ${m.missing.slice(0,6).map(esc).join(', ')}</div>` : ''}
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button data-tailor="${esc(m.id)}" class="px-2.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Tailor resume</button>
+            <button data-outreach="${esc(m.id)}" class="px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Outreach</button>
+            <button data-prep="${esc(m.id)}" class="px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Interview prep</button>
+            <a href="${esc(m.url)}" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded border border-slate-700 text-xs hover:bg-slate-800">Open posting</a>
+          </div>
+        </div>
+      </div></div>`;
+  }).join('') : '<div class="text-sm text-slate-500">Nothing scored yet — run step 4.</div>';
+
+  bind('[data-tailor]', 'tailor', 'Tailored resume', renderResume);
+  bind('[data-outreach]', 'outreach', 'Outreach pack', renderOutreach);
+  bind('[data-prep]', 'prep', 'Interview prep', renderPrep);
+}
+function bind(sel, endpoint, title, renderer) {
+  document.querySelectorAll(sel).forEach(b => b.onclick = async () => {
+    const id = b.getAttribute(`data-${endpoint === 'tailor' ? 'tailor' : endpoint}`);
+    const t = await runTask(api(`/api/${endpoint}/${encodeURIComponent(id)}`, { method: 'POST' }));
+    if (t.state === 'done') openDrawer(title, renderer(t.result));
+  });
+}
+$('#minScore').onchange = loadMatches;
+$('#btnShortlist').onclick = async () => {
+  const r = await api('/api/shortlist', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ min_score: 70, limit: 10 })
+  });
+  alert(`${r.added} job(s) added to your pipeline.`);
+  loadMatches(); refresh();
+};
+
+/* ---------- renderers ---------- */
+function renderResume(r) {
+  const v = r.violations || [], res = r.resume;
+  return `
+  ${v.length ? `<div class="rounded border border-rose-900 bg-rose-950/40 p-3">
+      <div class="text-rose-300 font-medium">Fabrication check failed — ${v.length} issue(s)</div>
+      <ul class="mt-2 space-y-1 text-rose-200/80 text-xs">${v.map(x => `<li>• ${esc(x)}</li>`).join('')}</ul>
+      <div class="text-xs text-rose-200/60 mt-2">Do not send this as-is. Either the model invented something,
+      or your brag document is missing the achievement it drew on.</div></div>`
+    : `<div class="rounded border border-emerald-900 bg-emerald-950/30 p-3 text-emerald-300 text-xs">
+       Fabrication check passed — every bullet traces to a real achievement.</div>`}
+  <div class="text-white font-medium">${esc(res.headline)}</div>
+  <p class="text-slate-400">${esc(res.summary)}</p>
+  <ul class="space-y-2">${res.bullets.map(b => `<li>
+      <div class="text-slate-200">• ${esc(b.text)}</div>
+      <div class="text-xs text-slate-600 ml-3">from: ${esc(b.source_achievement)}</div></li>`).join('')}</ul>
+  <div class="text-xs text-slate-500">Skills: ${res.skills_line.map(esc).join(', ')}</div>
+  ${res.omitted_and_why?.length ? `<div class="text-xs text-slate-500">
+     <div class="font-medium text-slate-400 mb-1">Deliberately omitted</div>
+     ${res.omitted_and_why.map(o => `<div>• ${esc(o)}</div>`).join('')}</div>` : ''}`;
+}
+function renderOutreach(p) {
+  const block = (t, b) => `<div><div class="text-xs uppercase tracking-wide text-slate-500 mb-1">${t}</div>
+    <div class="rounded bg-slate-950/60 border border-slate-800 p-3 whitespace-pre-wrap text-slate-300">${esc(b)}</div></div>`;
+  return block('Cover letter', p.cover_letter) + block(`Recruiter DM (${p.recruiter_dm.length} chars)`, p.recruiter_dm)
+    + block('Hiring manager email — ' + p.hm_email_subject, p.hm_email)
+    + block('Follow-up (after 5–7 days of silence)', p.followup_message);
+}
+function renderPrep(b) {
+  return `
+  <div><div class="text-xs uppercase tracking-wide text-rose-400 mb-1">Where you will get caught out</div>
+    <ul class="space-y-1 text-slate-300">${b.weak_spots.map(w => `<li>• ${esc(w)}</li>`).join('')}</ul></div>
+  <div><div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Likely questions</div>
+    ${b.likely_questions.map(q => `<div class="mb-3">
+      <div class="text-slate-200">${esc(q.question)} <span class="text-xs text-slate-600">[${esc(q.kind)}]</span></div>
+      <div class="text-xs text-slate-500 mt-0.5">Really testing: ${esc(q.why_asked)}</div>
+      <div class="text-xs text-slate-400 mt-1">${esc(q.answer_outline)}</div></div>`).join('')}</div>
+  <div><div class="text-xs uppercase tracking-wide text-slate-500 mb-1">Your STAR stories</div>
+    ${b.star_stories.map(s => `<div class="mb-2 rounded bg-slate-950/60 border border-slate-800 p-3">
+      <div class="text-slate-200">${esc(s.title)}</div>
+      <div class="text-xs text-slate-400 mt-1">S: ${esc(s.situation)}<br>T: ${esc(s.task)}<br>A: ${esc(s.action)}<br>R: ${esc(s.result)}</div>
+      </div>`).join('')}</div>`;
+}
+
+/* ---------- pipeline ---------- */
+async function loadPipeline() {
+  const p = await api('/api/pipeline');
+  $('#funnelRow').innerHTML = Object.entries(p.funnel).filter(([, v]) => v).map(([k, v]) =>
+    `<div class="px-3 py-2 rounded bg-slate-900 border border-slate-800">
+       <div class="text-lg font-semibold text-white">${v}</div>
+       <div class="text-xs text-slate-500">${esc(k)}</div></div>`).join('')
+    || '<div class="text-sm text-slate-500">Pipeline is empty — shortlist some matches.</div>';
+
+  $('#ratesBox').innerHTML = p.rates.callback_rate_pct !== null
+    ? `Callback rate: <b class="text-white">${p.rates.callback_rate_pct}%</b>`
+    : `<span class="text-slate-500">${p.rates.applied_total} applications — a rate needs 10+ before it means anything.</span>`;
+
+  const stages = p.stages;
+  $('#appList').innerHTML = p.applications.map(a => `
+    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3 flex items-center gap-3">
+      <div class="text-sm text-slate-500 w-8 text-right">${a.score ?? '—'}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm text-white truncate">${esc(a.title)}</div>
+        <div class="text-xs text-slate-500">${esc(a.company)} · ${a.days}d in ${esc(a.stage)}
+          ${p.needs_followup.includes(a.id) ? '<span class="text-amber-400">· follow up</span>' : ''}
+          ${p.ghosts.includes(a.id) ? '<span class="text-rose-400">· likely ghosted</span>' : ''}</div>
+      </div>
+      <select data-stage="${esc(a.id)}" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs">
+        ${stages.map(s => `<option ${s === a.stage ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+    </div>`).join('');
+
+  document.querySelectorAll('[data-stage]').forEach(sel => sel.onchange = async () => {
+    try {
+      await api('/api/stage/' + encodeURIComponent(sel.dataset.stage), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: sel.value })
+      });
+    } catch (e) { alert(e.message); }
+    loadPipeline(); refresh();
+  });
+}
+
+/* ---------- cost ---------- */
+async function loadCost() {
+  const c = await api('/api/spend');
+  $('#costBox').innerHTML = `
+    <div class="text-2xl font-semibold text-white">$${c.total.toFixed(4)}
+      <span class="text-sm text-slate-500 font-normal">of $${c.limit.toFixed(2)} limit</span></div>
+    ${c.by_agent.length ? `<table class="mt-4 w-full text-sm">
+      <thead class="text-xs text-slate-500"><tr class="text-left">
+        <th class="py-1">agent</th><th>model</th><th class="text-right">calls</th>
+        <th class="text-right">in</th><th class="text-right">out</th><th class="text-right">cost</th></tr></thead>
+      <tbody>${c.by_agent.map(r => `<tr class="border-t border-slate-800">
+        <td class="py-1.5 text-slate-300">${esc(r.agent)}</td><td class="text-slate-500">${esc(r.model)}</td>
+        <td class="text-right">${r.calls}</td><td class="text-right text-slate-500">${r.tin.toLocaleString()}</td>
+        <td class="text-right text-slate-500">${r.tout.toLocaleString()}</td>
+        <td class="text-right text-slate-200">$${r.cost.toFixed(4)}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="text-sm text-slate-500 mt-2">No API calls yet.</div>'}`;
+}
+
+/* ---------- drawer ---------- */
+function openDrawer(title, html) {
+  $('#drawerTitle').textContent = title;
+  $('#drawerBody').innerHTML = html;
+  $('#drawer').classList.remove('hidden');
+}
+$('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
+
+showTab('setup');
+refresh();
+</script>
+</body>
+</html>
