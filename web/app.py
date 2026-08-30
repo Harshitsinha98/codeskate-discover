@@ -12,14 +12,17 @@ deployed to a serverless platform as-is.
 
 from __future__ import annotations
 
+import base64
 import json
+import os
+import secrets
 import threading
 import traceback
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -44,6 +47,52 @@ from codeskate.settings import INBOX_DIR, load_settings
 STATIC = Path(__file__).parent / "static"
 
 app = FastAPI(title="CodeSkate", docs_url="/api/docs")
+
+
+# ---------------------------------------------------------------------------
+# access control
+# ---------------------------------------------------------------------------
+#
+# Mandatory before this is reachable from the internet. The app holds an LLM API
+# key and will spend money on behalf of whoever opens it, so an unprotected
+# public URL is an open invitation to drain your credits. The spend guard caps
+# the damage at CODESKATE_SPEND_LIMIT_USD, which is a real safety net — but a
+# net, not a lock.
+#
+# Set CODESKATE_PASSWORD to require a password. Left unset, the app runs open,
+# which is fine on localhost and unacceptable anywhere else.
+
+APP_PASSWORD = os.getenv("CODESKATE_PASSWORD", "").strip()
+PUBLIC_PATHS = {"/healthz"}
+
+
+@app.middleware("http")
+async def require_password(request: Request, call_next):  # noqa: ANN001, ANN201
+    if not APP_PASSWORD or request.url.path in PUBLIC_PATHS:
+        return await call_next(request)
+
+    header = request.headers.get("authorization", "")
+    if header.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(header[6:]).decode("utf-8", "replace")
+            supplied = decoded.split(":", 1)[1] if ":" in decoded else ""
+        except Exception:  # noqa: BLE001
+            supplied = ""
+        # Constant-time compare so the response time can't be used to guess it.
+        if secrets.compare_digest(supplied, APP_PASSWORD):
+            return await call_next(request)
+
+    return Response(
+        status_code=401,
+        content="Authentication required",
+        headers={"WWW-Authenticate": 'Basic realm="CodeSkate"'},
+    )
+
+
+@app.get("/healthz")
+def healthz() -> dict:
+    """Unauthenticated, for platform health checks. Reveals nothing."""
+    return {"ok": True}
 
 # ---------------------------------------------------------------------------
 # task registry — long jobs run on threads, the browser polls for progress
