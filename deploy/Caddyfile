@@ -1,0 +1,33 @@
+# Caddy terminates TLS and proxies to the app.
+#
+# Certificates are obtained and renewed automatically from Let's Encrypt, which
+# needs port 80 reachable from the internet for the challenge — see the security
+# list step in DEPLOY.md, since Oracle blocks it by default in two places.
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# Razorpay's webhook signature is computed over the exact request body, so
+	# nothing may rewrite or buffer-modify it on the way through.
+	reverse_proxy app:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
+
+	header {
+		# HSTS is deliberately modest: a long max-age on a domain you might still
+		# be reshuffling is hard to undo, since browsers cache the instruction.
+		Strict-Transport-Security "max-age=604800"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}

@@ -40,4 +40,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # Single worker on purpose: the queue worker thread should not be duplicated per
 # process, and one process is ample at this size. Scale by raising the plan's CPU
 # before adding workers, and move the queue to a dedicated service after that.
-CMD ["sh", "-c", "uvicorn saas.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+#
+# --proxy-headers is required when a reverse proxy terminates TLS, as Caddy does in
+# the Oracle Cloud setup: without it uvicorn believes every request is plain HTTP
+# and generates http:// URLs behind an https:// site. FORWARDED_ALLOW_IPS defaults
+# to the proxy on the compose network; it must never be widened to a host that is
+# reachable directly, or a client could forge its own X-Forwarded-For.
+CMD ["sh", "-c", "uvicorn saas.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips=${FORWARDED_ALLOW_IPS:-127.0.0.1}"]

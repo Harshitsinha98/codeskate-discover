@@ -32,15 +32,64 @@ Two facts decide it:
 Vercel becomes the better answer later — put the frontend on its CDN and keep the
 API on a persistent host — but not for a first paid launch.
 
-### Railway (recommended)
+### Oracle Cloud Always Free (₹0/month)
 
-1. Create a Postgres database (see below) and collect the secrets.
-2. On [railway.com](https://railway.com): **New Project → Deploy from GitHub repo**.
-   Railway detects the `Dockerfile` on its own.
-3. Add the environment variables from the table below. `WORKER_IN_PROCESS=1` is
-   already baked into the image, so no scheduler is needed.
-4. Settings → Networking → **Generate Domain**, then set `PUBLIC_BASE_URL` to it
-   and add `<domain>/api/auth/google/callback` to your Google OAuth client.
+The cheapest option that can legitimately take payments: Oracle's Always Free tier
+costs nothing and has no non-commercial clause. The trade is that you assemble it
+yourself — HTTPS, firewall, restarts — which the scripts here handle.
+
+**Take an ARM instance if your region has capacity.** Ampere A1 gives up to 4 OCPU
+and 24 GB free, against 1 OCPU and 1 GB on the x86 micro. Same price. ARM capacity
+is often exhausted in popular regions, which is why people end up on the micro; it
+is worth retrying, or picking a quieter region.
+
+**1 GB is enough — provided Postgres lives elsewhere.** Measured inside the
+container, the app peaks around **71 MB**: 64 MB after import, plus roughly 5 MB
+while holding the largest single discovery chunk. What a 1 GB box cannot survive is
+Postgres alongside it. Keep the database on Neon's free tier.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Harshitsinha98/codeskate-discover/main/deploy/setup-oracle.sh | bash
+```
+
+The script installs Docker, creates 2 GB of swap, opens the local firewall, and
+clones the repo. It is safe to run more than once.
+
+Then two things it cannot do from inside the instance:
+
+**1. Open 80 and 443 in the Oracle console.** Networking → Virtual Cloud Networks →
+your VCN → Subnet → Security List → Add Ingress Rules, source `0.0.0.0/0`, TCP
+ports 80 and 443.
+
+This catches nearly everyone, because it has to be done in *two* places. Oracle's
+images also ship iptables rules that drop inbound traffic locally — the script
+handles that half. Miss either and Let's Encrypt cannot reach the instance, no
+certificate is issued, and it looks like the app is broken.
+
+**2. Fill in `deploy/.env`.** Copy from `.env.example`. If you have no domain, use
+`<your-public-ip>.sslip.io`, which resolves to that IP and works with Let's
+Encrypt. HTTPS is not optional here: Google OAuth refuses non-HTTPS redirect URIs
+outside localhost, and the session cookie is set Secure.
+
+```bash
+cd ~/codeskate/deploy
+docker compose up -d --build
+docker compose logs -f app
+```
+
+The first build takes several minutes on a micro instance. Caddy obtains a
+certificate within a minute of the first HTTPS request.
+
+**What runs:** the app behind Caddy, which terminates TLS and renews certificates
+by itself. No scheduler — `WORKER_IN_PROCESS=1` drains the queue from inside the
+process. Both containers restart unless stopped, so a reboot recovers on its own,
+and logs are capped so they cannot fill the boot volume.
+
+**One caveat worth knowing:** Oracle reclaims Always Free compute that sits idle.
+A live app with the worker polling every few seconds does not qualify, but an
+instance you deploy and forget for weeks might be taken back.
+
+### Railway ($5/month)
 
 ### Render
 

@@ -1,0 +1,67 @@
+# Oracle Cloud Always Free deployment: the app plus Caddy for automatic HTTPS.
+#
+# Postgres is deliberately NOT here. On a 1 GB instance the app peaks around 71 MB,
+# leaving plenty of room — but Postgres alongside it would push a 1 GB box into
+# OOM-kill territory under any real load. Keep the database on Neon's free tier;
+# it costs nothing and removes the failure mode entirely.
+#
+# HTTPS is not optional. Google OAuth refuses non-HTTPS redirect URIs outside
+# localhost, and the session cookie is set Secure. Caddy obtains and renews a
+# Let's Encrypt certificate on its own, which is the whole reason it is here.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WORKER_IN_PROCESS: "1"
+      SECURE_COOKIES: "1"
+      # Trust forwarded headers only from Caddy on this network.
+      FORWARDED_ALLOW_IPS: "*"
+    expose:
+      - "8000"
+    # A 1 GB host has no room for a runaway container. The limit is well above the
+    # measured 71 MB peak, so hitting it means something is wrong rather than busy.
+    mem_limit: 512m
+    mem_reservation: 128m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging:
+      # Unbounded logs fill a 47 GB boot volume eventually, and debugging a full
+      # disk is a miserable way to spend an evening.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificates live here — losing this re-issues them
+      - caddy_config:/config
+    depends_on:
+      - app
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:
