@@ -21,6 +21,7 @@ from codeskate.agents import (
     discovery,
     fit_scoring,
     gap_analysis,
+    hiring_contact,
     interview_prep,
     outreach,
     pipeline,
@@ -28,6 +29,20 @@ from codeskate.agents import (
     skill_graph,
 )
 from codeskate.models import CompanyIntel, OutreachPack, SkillGraph, TailoredResume
+
+
+def _top_proof(graph: SkillGraph) -> str:
+    """The single strongest, quantified thing the candidate can lead with.
+
+    Used by outreach-style agents that want one proof point rather than the whole
+    profile. Prefers an achievement with a metric; falls back to the headline.
+    """
+    for ach in graph.achievements:
+        if ach.metric:
+            return f"{ach.headline} ({ach.metric})"
+    if graph.achievements:
+        return graph.achievements[0].headline
+    return graph.headline or "experienced in the core of this role"
 from codeskate.settings import CONFIG_DIR
 
 from . import queue, quota, store
@@ -397,6 +412,35 @@ def comp_handler(user_id: int, payload: dict, index: int) -> dict:
 # registration
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# Find the hiring manager
+# --------------------------------------------------------------------------- #
+
+
+def contact_handler(user_id: int, payload: dict, index: int) -> dict:
+    external_id = payload["external_id"]
+    posting = _posting_or_fail(external_id)
+    graph = _graph(user_id)
+
+    llm = _llm(user_id, "contact")
+    plan = hiring_contact.run(
+        llm,
+        candidate_name=graph.candidate_name or "",
+        seniority=graph.seniority or "",
+        years=graph.total_years_experience,
+        top_proof=_top_proof(graph),
+        job_title=posting["title"],
+        company=posting["company"],
+        jd=posting["description"] or "",
+    )
+    data = plan.model_dump(mode="json")
+    store.save_artifact(user_id, "contact", data, external_id)
+    return {
+        "log": [f"{len(plan.targets)} target title(s), confidence {plan.confidence}"],
+        "result": data,
+    }
+
+
 queue.register("profile", profile_handler)
 queue.register("gaps", gaps_handler)
 queue.register("discover", discover_handler, discover_planner)
@@ -406,5 +450,6 @@ queue.register("outreach", outreach_handler)
 queue.register("prep", prep_handler)
 queue.register("intel", intel_handler)
 queue.register("comp", comp_handler)
+queue.register("contact", contact_handler)
 
-SINGLE_JOB_KINDS = {"tailor", "outreach", "prep", "intel", "comp"}
+SINGLE_JOB_KINDS = {"tailor", "outreach", "prep", "intel", "comp", "contact"}

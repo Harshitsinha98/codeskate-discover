@@ -171,6 +171,65 @@ store.add_application(UID, "gh-2")
 store.add_application(UID, "wd-2")
 store.set_stage(UID, "wd-2", "screen", "recruiter call booked")
 
+# Pro, so the hiring-manager and messages tabs are unlocked in the screenshots.
+store.extend_plan(UID, "pro", 12)
+
+# Pre-generate the per-job artifacts for gh-1 so the drawer shows finished tabs
+# rather than empty "generate this" prompts.
+store.save_artifact(UID, "resume", {
+    "headline": "Incident & Cloud Support Engineer",
+    "summary": "3.8 years owning P1/P2 incidents on a ~150 ticket/day queue, escalation point "
+               "for a ~20 agent shift, SLA held above 95%. Moving into cloud support.",
+    "bullets": [
+        {"text": "Held SLA above 95% across a ~150 ticket/day queue for 8 consecutive quarters",
+         "source_achievement": "Held SLA above 95% across a ~150 ticket/day queue for 8 quarters"},
+        {"text": "Escalation point for a ~20 agent shift, owning P1/P2 to resolution",
+         "source_achievement": "Escalation point for a ~20 agent shift"},
+        {"text": "Cut P1 mean time to acknowledge by a third through queue triage changes",
+         "source_achievement": "Cut P1 mean time to acknowledge by a third"},
+    ],
+    "skills_line": ["Incident management", "ITIL", "ServiceNow", "SLA management", "Escalation"],
+}, "gh-1")
+store.save_artifact(UID, "outreach", {
+    "cover_letter": "I have spent three years as the person a 20-agent shift escalates to when a "
+                    "P1 lands, holding SLA above 95% on a ~150 ticket/day queue. Your cloud "
+                    "support tier is the same job with Linux underneath it, which is exactly the "
+                    "move I am making.\n\nI would bring queue discipline and escalation judgement "
+                    "from day one while I close the hands-on Linux gap, which I am already doing.\n\n"
+                    "I would welcome a short conversation about the role.",
+    "recruiter_dm": "Hi — I run P1 incident response for a ~20 agent shift (95%+ SLA, ~150 "
+                    "tickets/day) and am moving into cloud support. Your TSE role looks like a "
+                    "direct fit. Open to a quick chat?",
+    "hm_email_subject": "Cloud Support Engineer — incident lead making the move",
+    "hm_email": "Hi,\n\nI saw the Cloud Support Engineer opening. For three years I have been the "
+                "escalation point for a ~20 agent shift, holding SLA above 95% on a ~150 "
+                "ticket/day queue. That incident-ownership muscle is the core of the role; I am "
+                "closing the Linux gap now.\n\nWorth a short conversation?\n\nHarshit",
+    "followup_message": "Following up on the Cloud Support Engineer note — since writing I "
+                        "completed a hands-on Linux troubleshooting project I would be glad to "
+                        "walk through.",
+}, "gh-1")
+store.save_artifact(UID, "contact", {
+    "targets": [
+        {"likely_title": "Engineering Manager, Cloud Support",
+         "why_this_person": "This IC role reports into the cloud support function's manager.",
+         "seniority": "hiring_manager"},
+        {"likely_title": "Director, Technical Support",
+         "why_this_person": "Skip-level; likely involved for a growing support team.",
+         "seniority": "skip_level"},
+    ],
+    "linkedin_search_url": "https://www.linkedin.com/search/results/people/?keywords=Databricks+Engineering+Manager%2C+Cloud+Support",
+    "routes": [
+        "Check your network first — anyone connected to a Databricks employee can forward your note.",
+        "Databricks' own team/about page often lists support leadership by name.",
+        "A direct LinkedIn connection request with the note below, if no warmer route exists.",
+    ],
+    "connection_note": "Hi — I run P1 incident response for a ~20 agent shift (95%+ SLA). I saw "
+                       "your team's Cloud Support Engineer role and would value a quick note about "
+                       "it. No pressure either way.",
+    "confidence": "high",
+}, "gh-1")
+
 store.log_call(UID, agent="skill_graph", model="test",
                input_tokens=4200, output_tokens=900, cost_usd=0.02)
 for _ in range(8):
@@ -263,6 +322,25 @@ ab("eval", "document.getElementById('btnWhy').click()")
 time.sleep(2.5)
 ab("screenshot", str(SHOTS / "09-app-why.png"), "--full")
 print("  ok   09-app-why")
+
+print("\napplication drawer (assisted apply + hiring manager)")
+ab("eval", "showTab('matches')")
+time.sleep(1.5)
+# Open the top match (gh-1) — it has all artifacts seeded.
+ab("eval", "openJob(MATCHES.find(m => m.id === 'gh-1'))")
+time.sleep(2.5)
+ab("screenshot", str(SHOTS / "10-drawer-apply.png"), "--full")
+print("  ok   10-drawer-apply")
+
+ab("eval", "PACKTAB='contact'; renderDrawer()")
+time.sleep(1.5)
+ab("screenshot", str(SHOTS / "11-drawer-hiring-manager.png"), "--full")
+print("  ok   11-drawer-hiring-manager")
+
+ab("eval", "PACKTAB='outreach'; renderDrawer()")
+time.sleep(1.5)
+ab("screenshot", str(SHOTS / "12-drawer-messages.png"), "--full")
+print("  ok   12-drawer-messages")
 
 print("\nconsole errors")
 errors = ab("eval", "JSON.stringify(window.__errs || [])", check=False)

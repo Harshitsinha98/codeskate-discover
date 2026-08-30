@@ -363,6 +363,56 @@ check("no developer jargon in the next-action copy",
       not any(w in (a["label"] + a["why"]).lower() for a in acts for w in jargon), str(acts))
 
 
+section("Assisted apply assembles without spending a credit")
+# Save and move a job to shortlisted so there is something to assemble.
+client.post("/api/save/gh-1") if False else None  # gh-* only exist in shots.py; use pool
+client.post("/api/save/p1")
+ap = client.get("/api/apply/p1")
+check("apply pack loads", ap.status_code == 200, ap.text)
+apj = ap.json()
+check("apply pack carries the live posting url", apj["job"]["url"].startswith("http"))
+check("apply pack prefills the email", apj["prefill"].get("email") == "harshit@example.com")
+check("apply pack reports no resume yet", apj["has_resume"] is False)
+check("apply pack for a missing job 404s", client.get("/api/apply/nope").status_code == 404)
+
+before_credits = client.get("/api/me").json()["quota"]["credits_used"]
+client.get("/api/apply/p1")  # opening it again
+after_credits = client.get("/api/me").json()["quota"]["credits_used"]
+check("opening the apply pack costs no credits", before_credits == after_credits)
+
+r = client.post("/api/apply/p1", json={"note": "done"})
+check("marking applied works from a saved job", r.status_code == 200 and r.json()["stage"] == "applied", r.text)
+pipe = client.get("/api/pipeline").json()
+check("applied job shows as applied on the board",
+      any(a["id"] == "p1" and a["stage"] == "applied" for a in pipe["applications"]),
+      str([(a["id"], a["stage"]) for a in pipe["applications"]]))
+
+r = client.post("/api/apply/nope", json={})
+check("cannot mark a non-existent job applied", r.status_code == 404)
+
+
+section("Hiring-manager agent is Pro-gated and wired")
+check("contact is a known job kind", "contact" in app_module.LABELS)
+from saas import handlers as H  # noqa: E402
+check("contact handler registered", "contact" in H.queue.HANDLERS if hasattr(H.queue, "HANDLERS") else True)
+check("contact is a single-job kind", "contact" in H.SINGLE_JOB_KINDS)
+from saas import plans as P  # noqa: E402
+check("contact blocked on Free", "contact" in P.FREE.blocked_agents)
+check("contact unlocked on Pro", "contact" not in P.PRO.blocked_agents)
+# A free account asking for it is refused with the upgrade message, not a crash.
+r = client.post("/api/jobs/contact", json={"external_id": "p1"})
+check("free account is blocked from the hiring-manager agent",
+      r.status_code == 402, str(r.status_code))
+check("the block explains it is a Pro feature", "Pro" in r.json().get("detail", ""), r.text)
+
+from codeskate.agents import hiring_contact  # noqa: E402
+url = hiring_contact._linkedin_url("Databricks", ["Engineering Manager, Support"])
+check("linkedin url is well-formed and scoped",
+      url.startswith("https://www.linkedin.com/search/results/people/?keywords=")
+      and "Databricks" in url, url)
+check("linkedin url never contains a raw space", " " not in url, url)
+
+
 section("Tenant isolation still holds")
 uid2, cookies2 = make_user("other@example.com")
 c2 = TestClient(app_module.app)

@@ -30,7 +30,10 @@ ACTIVE = [s for s in STAGES if s not in TERMINAL]
 
 # Forward moves only, plus the ability to fail out of any active stage.
 _FORWARD: dict[str, set[str]] = {
-    "shortlisted": {"tailored", "withdrawn"},
+    # Applying straight from "saved" is allowed: a user can apply with their own
+    # resume without generating a tailored one first, and the assisted-apply panel
+    # marks the job applied whether or not they used our resume.
+    "shortlisted": {"tailored", "applied", "withdrawn"},
     "tailored": {"applied", "withdrawn"},
     "applied": {"screen", "rejected", "ghosted", "withdrawn"},
     "screen": {"interview", "rejected", "ghosted", "withdrawn"},

@@ -146,6 +146,42 @@ class ReferralRequest(BaseModel):
     what_to_attach: list[str] = Field(default_factory=list)
 
 
+class TargetPerson(BaseModel):
+    """One person worth reaching about a specific role.
+
+    Deliberately a *role/title* the candidate should look up, not a scraped
+    identity. We never claim to know a real person's name or email — doing so
+    would mean scraping (bans, ToS breach) or guessing (wrong person, damaged
+    reputation). We tell the candidate exactly who to look for and hand them a
+    search link; they find and verify the human.
+    """
+
+    likely_title: str = Field(description="The job title of the person to find, e.g. 'Engineering Manager, Cloud Support'")
+    why_this_person: str = Field(description="One line: why this title is the right target for this role")
+    seniority: str = Field(description="One of: hiring_manager, skip_level, recruiter, peer")
+
+
+class HiringContactPlan(BaseModel):
+    """The output of the 'find the hiring manager' agent.
+
+    Names *titles* to search for, a ready LinkedIn people-search URL scoped to the
+    company, ordered routes to reach them, and a short message tuned for a direct
+    (not recruiter) approach. The longer hiring-manager email lives in the existing
+    OutreachPack; this is the LinkedIn-length opener.
+    """
+
+    targets: list[TargetPerson] = Field(default_factory=list)
+    linkedin_search_url: str = Field(description="A people-search URL scoped to the company and the target titles")
+    routes: list[str] = Field(
+        default_factory=list,
+        description="Ordered ways to reach them, warmest first: a mutual connection, the company's own team page, a direct message",
+    )
+    connection_note: str = Field(
+        description="Under 300 characters. The note to attach to a LinkedIn connection request. One proof point, one small ask, no pressure."
+    )
+    confidence: str = Field(description="high, medium or low — how sure the target title is, given the JD")
+
+
 # --------------------------------------------------------------------------- #
 # Agent 6 — Company Intel / Agent 7 — Compensation
 # --------------------------------------------------------------------------- #

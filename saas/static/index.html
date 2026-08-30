@@ -405,6 +405,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&l
    empty boxes in several headless and Linux font stacks. */
 const TICK  = `<svg viewBox="0 0 20 20" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
 const ARROW = `<svg viewBox="0 0 20 20" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5l4.5 4.5-4.5 4.5"/></svg>`;
+const TICK_MINI = `<svg viewBox="0 0 20 20" class="inline w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
 
 let ME = null, CFG = null, SETUP = null;
 let MATCHES = [], BAND = 'all', SEARCH = '';
@@ -1061,13 +1062,22 @@ $('#btnWhy').onclick = async () => {
 /* ------------------------------------------------------------------ */
 /* application drawer                                                  */
 /* ------------------------------------------------------------------ */
+/* "apply" is a special tab: it generates nothing and costs nothing, it just
+   assembles what already exists, so it has no `key`/`art` and is handled apart
+   from the LLM-backed generate() path. It leads because submitting is the point
+   of the whole drawer. */
 const PACK = [
+  { key: '_apply',   special: true,     label: 'Apply',
+    render: renderApply },
   { key: 'tailor',   art: 'resume',     label: 'Resume',
     blurb: 'Your resume reordered and rewritten for this specific posting, then checked line by line so it cannot claim anything you did not actually do.',
     cta: 'Write my resume for this job', render: renderResume },
   { key: 'outreach', art: 'outreach',   label: 'Messages',
     blurb: 'A cover letter, a recruiter message short enough for LinkedIn, an email to the hiring manager, and the follow-up to send a week later.',
     cta: 'Write my messages', render: renderOutreach, needs: 'tailor' },
+  { key: 'contact',  art: 'contact',    label: 'Hiring manager',
+    blurb: 'Who owns this hire, a ready LinkedIn search to find them, the warmest ways to reach them, and the note to send. We never scrape or guess an email — we tell you exactly who to look for.',
+    cta: 'Find the hiring manager', render: renderContact },
   { key: 'prep',     art: 'prep_brief', label: 'Interview',
     blurb: 'The questions this posting invites, what each is really testing, and an honest list of where you will get caught out.',
     cta: 'Prepare me for the interview', render: renderPrep },
@@ -1079,21 +1089,24 @@ const PACK = [
     cta: 'Work out the salary band', render: renderComp },
 ];
 
-let JOB = null, ART = {}, PACKTAB = 'tailor';
+let JOB = null, ART = {}, APPLY = null, PACKTAB = '_apply';
 
 async function openJob(m) {
-  JOB = m; ART = {}; PACKTAB = 'tailor';
+  JOB = m; ART = {}; APPLY = null; PACKTAB = '_apply';
   $('#drawerTitle').textContent = m.title;
   $('#drawerSub').textContent = `${m.company} · ${m.location || ''} · scored ${m.score}/100`;
   $('#drawer').classList.remove('hidden');
   $('#drawerBody').innerHTML = '<div class="text-slate-500">Loading…</div>';
 
   // Anything already generated is fetched back rather than regenerated, so
-  // reopening a job never costs a credit.
-  await Promise.all(PACK.map(async p => {
-    try { ART[p.key] = (await api(`/api/artifact/${p.art}/${encodeURIComponent(m.id)}`)).payload; }
-    catch { ART[p.key] = null; }
-  }));
+  // reopening a job never costs a credit. The apply pack is free too.
+  await Promise.all([
+    ...PACK.filter(p => p.art).map(async p => {
+      try { ART[p.key] = (await api(`/api/artifact/${p.art}/${encodeURIComponent(m.id)}`)).payload; }
+      catch { ART[p.key] = null; }
+    }),
+    (async () => { try { APPLY = await api(`/api/apply/${encodeURIComponent(m.id)}`); } catch { APPLY = null; } })(),
+  ]);
   renderDrawer();
 }
 
@@ -1104,17 +1117,29 @@ function renderDrawer() {
 
   $('#drawerTabs').innerHTML = PACK.map(p => {
     const on = p.key === PACKTAB;
-    const done = !!ART[p.key];
+    const done = !p.special && !!ART[p.key];
+    const applied = p.special && APPLY && APPLY.stage &&
+      ['applied','screen','interview','onsite','offer','accepted'].includes(APPLY.stage);
     return `<button data-ptab="${p.key}" class="px-3 py-2.5 border-b-2 whitespace-nowrap transition ${on
       ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}">
       ${esc(p.label)}
-      ${done ? '<span class="ml-1 text-emerald-400">&bull;</span>'
-             : locked.has(p.key) ? '<span class="ml-1 text-[10px] text-indigo-400">PRO</span>' : ''}
+      ${applied ? `<span class="ml-1 text-emerald-400">${TICK_MINI}</span>`
+        : done ? '<span class="ml-1 text-emerald-400">&bull;</span>'
+             : (!p.special && locked.has(p.key)) ? '<span class="ml-1 text-[10px] text-indigo-400">PRO</span>' : ''}
     </button>`;
   }).join('');
   $$('[data-ptab]').forEach(b => b.onclick = () => { PACKTAB = b.dataset.ptab; renderDrawer(); });
 
   const p = PACK.find(x => x.key === PACKTAB);
+
+  // The apply tab assembles existing data; it never generates and never charges.
+  if (p.special) {
+    $('#drawerBody').innerHTML = `<div class="space-y-4">${p.render(APPLY)}</div>`;
+    wireApply();
+    wireCopies();
+    return;
+  }
+
   const data = ART[p.key];
 
   if (data) {
@@ -1278,6 +1303,126 @@ function renderComp(c) {
       Treat this as a starting assumption, not market data. Cross-check on AmbitionBox or
       Levels.fyi before you say a number out loud.</div>` : ''}`;
 }
+
+/* ---------- hiring manager ---------- */
+const SEN_LABEL = { hiring_manager: 'Hiring manager', skip_level: "Their manager",
+                    recruiter: 'Recruiter', peer: 'Future teammate' };
+
+function renderContact(c) {
+  const conf = c.confidence === 'high' ? 'emerald' : c.confidence === 'medium' ? 'amber' : 'slate';
+  return `
+    <div class="rounded-lg border border-${conf}-500/25 bg-${conf}-500/[0.06] p-3 text-xs text-${conf}-200/85 leading-relaxed">
+      We never scrape LinkedIn or guess anyone's email — that gets accounts banned and reaches the
+      wrong person. Below is exactly who to look for and a search to find them.
+      Confidence this is the right role: <b>${esc(c.confidence)}</b>.
+    </div>
+
+    <div>
+      <div class="text-xs uppercase tracking-wider text-slate-500 mb-2">Who to look for</div>
+      <div class="space-y-2">
+        ${(c.targets || []).map(t => `
+          <div class="rounded-xl bg-black/25 border border-white/8 p-4">
+            <div class="flex items-center gap-2">
+              <span class="text-white text-sm font-medium">${esc(t.likely_title)}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-white/8 text-slate-400">${esc(SEN_LABEL[t.seniority] || t.seniority)}</span>
+            </div>
+            <div class="text-sm text-slate-400 mt-1.5">${esc(t.why_this_person)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <a href="${esc(c.linkedin_search_url)}" target="_blank" rel="noopener"
+       class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0a66c2] hover:bg-[#0a5aad] text-white text-sm font-medium transition">
+      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 11 0-4.13 2.06 2.06 0 010 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.8 0 0 .78 0 1.75v20.5C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.75V1.75C24 .78 23.2 0 22.22 0z"/></svg>
+      Search LinkedIn for this person
+    </a>
+
+    <div>
+      <div class="text-xs uppercase tracking-wider text-slate-500 mb-2">How to reach them, best first</div>
+      <ol class="space-y-1.5">
+        ${(c.routes || []).map((r, i) => `<li class="flex gap-2.5 text-sm text-slate-300">
+          <span class="text-slate-600">${i + 1}.</span><span>${esc(r)}</span></li>`).join('')}
+      </ol>
+    </div>
+
+    ${block('Connection note (under 300 characters — attach to the LinkedIn request)', c.connection_note)}
+
+    ${ART.outreach ? `<div class="text-xs text-slate-500">
+      Want the longer version? The full hiring-manager email is on the
+      <button class="text-indigo-400 hover:text-indigo-300 underline" onclick="PACKTAB='outreach';renderDrawer()">Messages</button> tab.</div>`
+      : `<div class="text-xs text-slate-500">Tip: generate <button class="text-indigo-400 hover:text-indigo-300 underline" onclick="PACKTAB='outreach';renderDrawer()">Messages</button> too — that gives you the longer email to send once they accept.</div>`}`;
+}
+
+/* ---------- assisted apply ---------- */
+function renderApply(a) {
+  if (!a) return '<div class="text-sm text-rose-300">Could not load this job. Close and reopen it.</div>';
+
+  const applied = a.stage && ['applied','screen','interview','onsite','offer','accepted'].includes(a.stage);
+  const fieldRows = Object.entries({
+    'Full name': a.prefill.full_name, 'Email': a.prefill.email,
+    'Current title': a.prefill.current_title,
+    'Years of experience': a.prefill.years_experience,
+    'Notice period': a.prefill.notice_period,
+    'Expected salary': a.prefill.expected_salary,
+    'Preferred location': a.prefill.location,
+  }).filter(([, v]) => v != null && v !== '');
+
+  return `
+    <div class="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.06] p-4">
+      <div class="text-white text-sm font-medium">You submit this one yourself — on purpose.</div>
+      <p class="text-sm text-slate-400 mt-1.5 leading-relaxed">
+        We do not auto-apply: it gets accounts banned and buries good applications in the spam pile.
+        Instead everything you need is right here. Open the posting, paste, submit — then mark it done.
+      </p>
+    </div>
+
+    <a href="${esc(a.job.url)}" target="_blank" rel="noopener"
+       class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-medium hover:from-indigo-400 hover:to-violet-500 transition">
+      Open the application page ${ARROW}
+    </a>
+
+    ${fieldRows.length ? `<div>
+      <div class="flex items-center gap-2 mb-2">
+        <div class="text-xs uppercase tracking-wider text-slate-500">Common form fields</div>
+        <button data-copy="applyFields" class="ml-auto text-xs text-slate-500 hover:text-indigo-300">Copy all</button>
+      </div>
+      <div id="applyFields" class="rounded-xl bg-black/30 border border-white/8 divide-y divide-white/6">
+        ${fieldRows.map(([k, v]) => `<div class="flex gap-3 px-4 py-2.5 text-sm">
+          <span class="text-slate-500 w-40 shrink-0">${esc(k)}</span>
+          <span class="text-slate-200">${esc(v)}</span></div>`).join('')}
+      </div></div>` : ''}
+
+    ${a.has_resume
+      ? `<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-3.5 flex items-center gap-2.5 text-sm text-emerald-200/90">
+          <span class="shrink-0">${TICK}</span>
+          <span>A resume tailored to this job is ready — grab it from the
+          <button class="underline hover:text-white" onclick="PACKTAB='tailor';renderDrawer()">Resume</button> tab.</span></div>`
+      : `<div class="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3.5 text-sm text-amber-100/85">
+          You have not tailored a resume for this job yet. You can still apply with your own —
+          or <button class="underline hover:text-white" onclick="PACKTAB='tailor';renderDrawer()">write one for this role</button> first (recommended).</div>`}
+
+    ${a.cover_letter ? block('Cover letter (paste into the form or attach)', a.cover_letter) : ''}
+
+    <div class="pt-2 border-t border-white/8">
+      ${applied
+        ? `<div class="flex items-center gap-2 text-sm text-emerald-300">${TICK}
+            Marked as applied. It is tracked on your Saved jobs board now.</div>`
+        : `<div class="text-sm text-slate-400 mb-2.5">Once you have submitted on their site:</div>
+           <button id="btnApplied" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/16 border border-white/10 text-white text-sm font-medium transition">
+             I applied — track it</button>`}
+    </div>`;
+}
+
+function wireApply() {
+  if ($('#btnApplied')) $('#btnApplied').onclick = async () => {
+    try {
+      await post(`/api/apply/${encodeURIComponent(JOB.id)}`, { note: 'applied via assisted apply' });
+      flash('Nice. Tracking it on your Saved jobs board.', 'good');
+      APPLY = await api(`/api/apply/${encodeURIComponent(JOB.id)}`);
+      renderDrawer(); loadMatches(); refresh();
+    } catch (e) { flash(e.message, 'bad'); }
+  };
+}
 </script>
 
 
@@ -1370,7 +1515,7 @@ const AGENT_LABEL = {
   fit_scoring: 'Scoring jobs', resume_tailoring: 'Resume rewrites',
   outreach: 'Messages', interview_prep: 'Interview prep',
   company_intel: 'Company briefings', compensation: 'Salary bands',
-  intake: 'Reading your resume',
+  hiring_contact: 'Finding hiring managers', intake: 'Reading your resume',
 };
 
 async function loadPlan() {

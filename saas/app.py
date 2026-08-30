@@ -564,6 +564,7 @@ LABELS = {
     "prep": "Preparing you for the interview",
     "intel": "Researching the company",
     "comp": "Working out the salary band",
+    "contact": "Finding the hiring manager",
 }
 
 
@@ -759,6 +760,82 @@ def artifact(kind: str, external_id: str, user: dict = Depends(current_user)) ->
     if payload is None:
         raise HTTPException(404, f"no {kind} generated for this job yet")
     return {"kind": kind, "payload": payload}
+
+
+@app.get("/api/apply/{external_id:path}")
+def apply_pack(external_id: str, user: dict = Depends(current_user)) -> dict:
+    """Everything needed to submit this application, assembled in one place. Free.
+
+    Deliberately NOT auto-apply. Auto-submitting to job boards gets accounts
+    banned and buries good applications in the same pile as spam. This does the
+    tedious part — pulls together the live posting link, the tailored resume, the
+    cover letter and the answers to the questions every form asks — and leaves the
+    one click that has to be the user's: pressing submit, on a job they chose.
+
+    Reads only already-generated artifacts, so it costs no credits and can be
+    opened as many times as you like.
+    """
+    posting = store.posting(external_id)
+    if not posting:
+        raise HTTPException(404, "That job posting is no longer available")
+
+    raw = store.load_profile(user["id"])
+    graph = SkillGraph.model_validate(raw) if raw else None
+    resume = store.latest_artifact(user["id"], "resume", external_id)
+    outreach_pack = store.latest_artifact(user["id"], "outreach", external_id)
+    comp = store.latest_artifact(user["id"], "comp", external_id)
+
+    # The fields nearly every application form asks for, pre-filled from what we
+    # already know. Salary target comes from the comp estimate when it exists,
+    # otherwise the user's stated floor.
+    targets = store.load_targets(user["id"]) or {}
+    salary_floor = (targets.get("constraints") or {}).get("minimum_salary_inr_lpa")
+    expected = None
+    if comp and comp.get("recommended_ask"):
+        expected = f"{comp['recommended_ask']} {comp.get('unit', 'LPA')}"
+    elif salary_floor:
+        expected = f"{salary_floor}+ LPA"
+
+    prefill = {
+        "full_name": (graph.candidate_name if graph else None) or user.get("display_name"),
+        "email": user["email"],
+        "current_title": graph.headline if graph else None,
+        "years_experience": graph.total_years_experience if graph else None,
+        "notice_period": (targets.get("constraints") or {}).get("notice_period"),
+        "expected_salary": expected,
+        "location": ", ".join((targets.get("cities") or [])[:3]) or None,
+    }
+
+    return {
+        "job": {"id": external_id, "title": posting["title"], "company": posting["company"],
+                "location": posting["location"], "url": posting["url"]},
+        "prefill": {k: v for k, v in prefill.items() if v not in (None, "")},
+        "has_resume": resume is not None,
+        "resume": resume,
+        "cover_letter": (outreach_pack or {}).get("cover_letter"),
+        "stage": (store.get_application(user["id"], external_id) or {}).get("stage"),
+    }
+
+
+class AppliedBody(BaseModel):
+    note: str = ""
+
+
+@app.post("/api/apply/{external_id:path}")
+def mark_applied(external_id: str, body: AppliedBody, user: dict = Depends(current_user)) -> dict:
+    """Record that the user submitted this one. Moves it to 'applied' on the board.
+
+    Saved first if it was not already, so 'I applied' always works even for a job
+    opened straight from the matches list.
+    """
+    if not store.posting(external_id):
+        raise HTTPException(404, "That job posting is no longer available")
+    store.add_application(user["id"], external_id)
+    app_row = store.get_application(user["id"], external_id)
+    if app_row and pipeline.can_move(app_row["stage"], "applied"):
+        store.set_stage(user["id"], external_id, "applied", body.note or "marked applied")
+        store.record_outcome(user["id"], "applied", body.note, external_id)
+    return {"stage": "applied"}
 
 
 @app.get("/api/next")

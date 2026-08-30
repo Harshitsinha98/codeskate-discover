@@ -54,7 +54,7 @@ FREE = Plan(
         "40 credits a month",
     ),
     # The expensive, high-value agents are what Pro is for.
-    blocked_agents=frozenset({"tailor", "outreach", "prep", "comp", "intel"}),
+    blocked_agents=frozenset({"tailor", "outreach", "prep", "comp", "intel", "contact"}),
 )
 
 PRO = Plan(
@@ -67,6 +67,7 @@ PRO = Plan(
         "Everything in Free",
         "A resume rewritten for each job — checked so it never claims anything you did not do",
         "Cover letter, recruiter message and hiring-manager email, ready to send",
+        "The likely hiring manager to find, with a search link and the note to send",
         "Interview prep: the questions you will get and where you will get caught out",
         "Company briefing before every call",
         "Salary band and a recommended number to ask for",
