@@ -1,123 +1,65 @@
-# Your job feed. Each entry is a company's ATS board slug — these endpoints are
-# public, free and keyless. Growing this list is the single highest-leverage
-# thing you can do for match quality.
+# Job feed — tuned for India.
 #
-# How to find a slug: open a company's careers page and look at the URL.
+# Two groups, both verified live on 2026-08-30:
+#   greenhouse/lever/ashby : Indian product companies and startups
+#   workday                : MNCs with large India offices, searched for India roles
+#
+# The Workday section matters most for a support/operations/SRE profile: MNC India
+# offices hire heavily for exactly those roles, and they publish on Workday. The
+# search terms are set to India + support/operations so the two-call-per-posting
+# cost stays bounded.
+#
+# To add a company: open its careers page and read the URL.
 #   job-boards.greenhouse.io/SLUG   -> greenhouse
 #   jobs.lever.co/SLUG              -> lever
 #   jobs.ashbyhq.com/SLUG           -> ashby
-#
-# Every slug below was verified live on 2026-08-30 and returned postings.
-# Boards go stale — `codeskate discover` reports dead slugs and skips them safely.
-#
-# TODO(you): replace these US-centric names with companies you would actually
-# join. 200-300 relevant slugs beats 4000 jobs you don't want.
 
 greenhouse:
-  - affirm
-  - airbnb
-  - anthropic
-  - asana
-  - brex
-  - cloudflare
-  - coinbase
-  - databricks
-  - discord
-  - dropbox
-  - duolingo
-  - figma
-  - flexport
-  - gitlab
-  - instacart
-  - reddit
-  - robinhood
-  - samsara
-  - sofi
-  - stripe
-  - twilio
-  - zscaler
+  - postman
+  - groww
 
 lever:
-  - palantir
-  - spotify
-  - matchgroup
+  - meesho
+  - cred
 
 ashby:
-  - linear
-  - vanta
+  - atlan
+  - incident
 
-# ---------------------------------------------------------------------------
-# Workday — how most large MNCs publish, including their India requisitions.
-# Greenhouse/Lever/Ashby barely cover MNCs, so without this section the feed
-# skews to US startups.
-#
-# Two calls per posting (list, then detail for the JD), so narrow it:
-#   search  one term or a list; Workday filters server-side, for free.
-#           Including "India" in the term cuts most of the noise immediately.
-#   max     cap per search term. 40 is plenty while tuning.
-#
-# Finding the three values: open the careers site and read the URL —
-#   https://TENANT.WD.myworkdayjobs.com/SITE
-# e.g. nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
-#
-# All ten below were verified live on 2026-08-30.
+# MNC India offices — where a service-desk / support / ops / SRE profile fits best.
 workday:
   - tenant: nvidia
     wd: wd5
     site: NVIDIAExternalCareerSite
-    search: ["technical support engineer India", "cloud operations India"]
+    search: ["technical support India", "site reliability India", "operations India"]
     max: 40
-
   - tenant: salesforce
     wd: wd12
     site: External_Career_Site
-    search: ["technical support engineer India", "cloud support India"]
+    search: ["technical support India", "cloud support India", "operations India"]
     max: 40
-
   - tenant: adobe
     wd: wd5
     site: external_experienced
-    search: ["technical support engineer India", "cloud operations India"]
+    search: ["technical support India", "cloud operations India"]
     max: 40
-
   - tenant: accenture
     wd: wd103
     site: AccentureCareers
-    search: ["cloud support engineer India", "infrastructure support India"]
+    search: ["cloud support India", "infrastructure engineer India", "service desk India"]
     max: 40
-
-  - tenant: paypal
-    wd: wd1
-    site: jobs
-    search: ["technical support India", "production support India"]
-    max: 40
-
   - tenant: micron
     wd: wd1
     site: External
-    search: ["IT support engineer India", "systems engineer India"]
+    search: ["IT support India", "systems engineer India", "operations India"]
     max: 40
-
   - tenant: thomsonreuters
     wd: wd5
     site: External_Career_Site
     search: ["technical support India", "cloud operations India"]
     max: 40
-
   - tenant: hitachi
     wd: wd1
     site: hitachi
-    search: ["technical support engineer India", "cloud engineer India"]
-    max: 40
-
-  - tenant: workday
-    wd: wd5
-    site: Workday
-    search: ["technical support India", "production support India"]
-    max: 40
-
-  - tenant: broadcom
-    wd: wd1
-    site: External_Career
-    search: ["technical support India", "support engineer India"]
+    search: ["technical support India", "cloud engineer India", "infrastructure India"]
     max: 40
