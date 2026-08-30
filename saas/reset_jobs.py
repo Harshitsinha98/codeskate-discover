@@ -14,9 +14,11 @@ would be orphaned. This deletes all of them, in the order that works.
 What survives: accounts, sessions, uploaded documents, profiles, gap reports,
 plans and payments. Only the job pool and per-job derived data go.
 
-Usage, from the deploy directory on the server:
+Lives inside the saas package because that is what the container ships — the
+deploy/ directory is not copied into the image. Run it as a module so the import
+path resolves the same way the app's does:
 
-    docker compose exec app python deploy/reset-jobs.py --yes
+    docker compose exec app python -m saas.reset_jobs --yes
 
 Without --yes it only reports what it would delete.
 """
@@ -24,9 +26,6 @@ Without --yes it only reports what it would delete.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import delete, func, select  # noqa: E402
 
@@ -76,7 +75,7 @@ def main() -> int:
         docs = int(c.execute(select(func.count()).select_from(s.documents)).scalar_one())
 
     print(f"\ndone: {left} postings left, {users} accounts and {docs} documents intact")
-    print('Next: sign in and press "Search for new openings".')
+    print('Next: sign in and press "Find my matches".')
     return 0
 
 
