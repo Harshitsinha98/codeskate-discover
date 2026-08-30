@@ -30,16 +30,44 @@ def _rows(result) -> list[dict]:
 # --------------------------------------------------------------------------- #
 
 
-def create_user(email: str, password_hash: str, spend_limit_usd: float = 5.0) -> int:
-    with get_engine().begin() as c:
+def upsert_google_user(sub: str, email: str, name: str, picture: str | None) -> dict:
+    """Find or create the account behind a Google identity.
+
+    Matched on `sub` first and email second: Google's subject id is stable, while
+    the email on a Google account can change. Matching on email alone would strand
+    a user who renamed their address, and matching only on sub would create a
+    duplicate for anyone who existed before this column did.
+    """
+    engine = get_engine()
+    with engine.begin() as c:
+        row = c.execute(select(s.users).where(s.users.c.google_sub == sub)).first()
+        if row is None:
+            row = c.execute(
+                select(s.users).where(s.users.c.email == email.strip().lower())
+            ).first()
+
+        if row is not None:
+            c.execute(
+                s.users.update().where(s.users.c.id == row._mapping["id"]).values(
+                    google_sub=sub, email=email.strip().lower(),
+                    display_name=name, avatar_url=picture, last_login_at=_now(),
+                )
+            )
+            refreshed = c.execute(
+                select(s.users).where(s.users.c.id == row._mapping["id"])
+            ).first()
+            return dict(refreshed._mapping)
+
         result = c.execute(
             s.users.insert().values(
-                email=email.strip().lower(),
-                password_hash=password_hash,
-                spend_limit_usd=spend_limit_usd,
+                email=email.strip().lower(), google_sub=sub, display_name=name,
+                avatar_url=picture, plan="free", last_login_at=_now(),
             )
         )
-        return int(result.inserted_primary_key[0])
+        created = c.execute(
+            select(s.users).where(s.users.c.id == result.inserted_primary_key[0])
+        ).first()
+        return dict(created._mapping)
 
 
 def user_by_email(email: str) -> dict | None:
@@ -56,14 +84,76 @@ def user_by_id(user_id: int) -> dict | None:
     return dict(row._mapping) if row else None
 
 
-def touch_login(user_id: int) -> None:
-    with get_engine().begin() as c:
-        c.execute(s.users.update().where(s.users.c.id == user_id).values(last_login_at=_now()))
+# --------------------------------------------------------------------------- #
+# subscription
+# --------------------------------------------------------------------------- #
 
 
-def set_spend_limit(user_id: int, limit: float) -> None:
+def extend_plan(user_id: int, plan: str, months: int) -> datetime:
+    """Extend a subscription, stacking onto unused time rather than discarding it.
+
+    Someone who renews early should not lose the days they already paid for, so
+    the new period starts from the later of now and the current expiry.
+    """
     with get_engine().begin() as c:
-        c.execute(s.users.update().where(s.users.c.id == user_id).values(spend_limit_usd=limit))
+        row = c.execute(
+            select(s.users.c.plan_expires_at).where(s.users.c.id == user_id)
+        ).first()
+        current = row[0] if row else None
+        if isinstance(current, str):
+            current = datetime.fromisoformat(current)
+        if current is not None and current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+
+        base = current if (current and current > _now()) else _now()
+        new_expiry = base + timedelta(days=31 * months)
+        c.execute(
+            s.users.update().where(s.users.c.id == user_id).values(
+                plan=plan, plan_expires_at=new_expiry
+            )
+        )
+    return new_expiry
+
+
+def record_payment(
+    user_id: int, payment_id: str, order_id: str, amount_paise: int,
+    status: str, plan: str, months: int, raw: dict,
+) -> bool:
+    """Insert a payment. Returns False if it was already recorded.
+
+    The browser redirect and the webhook both arrive for the same payment, so this
+    has to be idempotent — otherwise a user gets two months for one charge.
+    """
+    with get_engine().begin() as c:
+        result = c.execute(
+            upsert_nothing(
+                s.payments,
+                {
+                    "user_id": user_id, "provider": "razorpay",
+                    "provider_payment_id": payment_id, "provider_order_id": order_id,
+                    "amount_paise": amount_paise, "currency": "INR", "status": status,
+                    "plan": plan, "months": months, "raw": raw, "created_at": _now(),
+                },
+                ["provider_payment_id"],
+            )
+        )
+        return result.rowcount > 0
+
+
+def list_payments(user_id: int, limit: int = 24) -> list[dict]:
+    with get_engine().begin() as c:
+        return _rows(
+            c.execute(
+                select(
+                    s.payments.c.provider_payment_id, s.payments.c.amount_paise,
+                    s.payments.c.status, s.payments.c.plan, s.payments.c.months,
+                    s.payments.c.created_at,
+                )
+                .where(s.payments.c.user_id == user_id)
+                .order_by(desc(s.payments.c.id))
+                .limit(limit)
+            )
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -107,41 +197,6 @@ def delete_session(token_hash: str) -> None:
 def purge_expired_sessions() -> int:
     with get_engine().begin() as c:
         return c.execute(s.sessions.delete().where(s.sessions.c.expires_at <= _now())).rowcount
-
-
-# --------------------------------------------------------------------------- #
-# API keys (BYOK)
-# --------------------------------------------------------------------------- #
-
-
-def save_user_key(
-    user_id: int, provider: str, ciphertext: str, hint: str,
-    model_cheap: str, model_smart: str,
-) -> None:
-    with get_engine().begin() as c:
-        c.execute(
-            upsert(
-                s.user_keys,
-                {
-                    "user_id": user_id, "provider": provider, "key_ciphertext": ciphertext,
-                    "key_hint": hint, "model_cheap": model_cheap,
-                    "model_smart": model_smart, "updated_at": _now(),
-                },
-                ["user_id"],
-                ["provider", "key_ciphertext", "key_hint", "model_cheap", "model_smart", "updated_at"],
-            )
-        )
-
-
-def get_user_key(user_id: int) -> dict | None:
-    with get_engine().begin() as c:
-        row = c.execute(select(s.user_keys).where(s.user_keys.c.user_id == user_id)).first()
-    return dict(row._mapping) if row else None
-
-
-def delete_user_key(user_id: int) -> None:
-    with get_engine().begin() as c:
-        c.execute(s.user_keys.delete().where(s.user_keys.c.user_id == user_id))
 
 
 # --------------------------------------------------------------------------- #
@@ -620,68 +675,6 @@ def spend_by_agent(user_id: int) -> list[dict]:
             )
         )
 
-
-
-# --------------------------------------------------------------------------- #
-# password resets
-# --------------------------------------------------------------------------- #
-
-
-def create_password_reset(token_hash: str, user_id: int, ttl_minutes: int = 60) -> None:
-    with get_engine().begin() as c:
-        # One live token per user: requesting a new link should invalidate the old
-        # one rather than leaving several valid at once.
-        c.execute(
-            s.password_resets.delete().where(
-                and_(s.password_resets.c.user_id == user_id,
-                     s.password_resets.c.used_at.is_(None))
-            )
-        )
-        c.execute(
-            s.password_resets.insert().values(
-                token_hash=token_hash, user_id=user_id,
-                created_at=_now(), expires_at=_now() + timedelta(minutes=ttl_minutes),
-            )
-        )
-
-
-def consume_password_reset(token_hash: str) -> int | None:
-    """Return the user_id and mark the token used, or None if it is not usable.
-
-    Marking and checking happen in one transaction so the same link cannot be
-    redeemed twice by two concurrent requests.
-    """
-    with get_engine().begin() as c:
-        row = c.execute(
-            select(s.password_resets.c.user_id).where(
-                and_(
-                    s.password_resets.c.token_hash == token_hash,
-                    s.password_resets.c.used_at.is_(None),
-                    s.password_resets.c.expires_at > _now(),
-                )
-            )
-        ).first()
-        if not row:
-            return None
-        c.execute(
-            s.password_resets.update()
-            .where(s.password_resets.c.token_hash == token_hash)
-            .values(used_at=_now())
-        )
-        return int(row[0])
-
-
-def set_password(user_id: int, password_hash: str) -> None:
-    """Change the password and drop every session for that user.
-
-    Signing other sessions out is the point: if the reset was triggered because
-    someone else had access, leaving their session alive defeats the exercise.
-    """
-    with get_engine().begin() as c:
-        c.execute(
-            s.users.update().where(s.users.c.id == user_id).values(password_hash=password_hash)
-        )
-        c.execute(s.sessions.delete().where(s.sessions.c.user_id == user_id))
 
 
 # --------------------------------------------------------------------------- #

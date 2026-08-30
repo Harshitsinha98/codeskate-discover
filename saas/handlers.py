@@ -30,8 +30,23 @@ from codeskate.agents import (
 from codeskate.models import CompanyIntel, OutreachPack, SkillGraph, TailoredResume
 from codeskate.settings import CONFIG_DIR
 
-from . import queue, store
+from . import queue, quota, store
 from .runtime import user_llm
+
+
+def _llm(user_id: int, kind: str):
+    """Build the client, re-checking quota immediately before the call.
+
+    The check at enqueue time stops obviously disallowed work. This one stops a
+    long multi-unit job — scoring 200 postings, say — from continuing past the
+    allowance once it has already started. Without it, the ceiling would only be
+    enforced at the moment a job begins.
+    """
+    user = store.user_by_id(user_id)
+    if user is None:
+        raise RuntimeError("Account not found")
+    quota.check(user, kind)
+    return user_llm(user_id)
 
 
 def _graph(user_id: int) -> SkillGraph:
@@ -66,7 +81,7 @@ def profile_handler(user_id: int, payload: dict, index: int) -> dict:
     if not bundle.strip():
         raise RuntimeError("Upload a resume and brag document first")
 
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "profile")
     graph = skill_graph.build(llm, bundle)
     store.save_profile(user_id, graph.model_dump(mode="json"))
     proven = len(graph.claimable_skills())
@@ -89,7 +104,7 @@ def profile_handler(user_id: int, payload: dict, index: int) -> dict:
 def gaps_handler(user_id: int, payload: dict, index: int) -> dict:
     graph = _graph(user_id)
     role = payload["role"]
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "gaps")
     report = gap_analysis.run(llm, graph, role, fit_scoring.constraints_text(_targets(user_id)))
     data = report.model_dump(mode="json")
     store.save_gap_report(user_id, role, data)
@@ -177,7 +192,7 @@ def score_handler(user_id: int, payload: dict, index: int) -> dict:
 
     graph = _graph(user_id)
     targets = _targets(user_id)
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "score")
 
     result = fit_scoring.score_job(
         llm, skill_graph.profile_brief(graph), posting, fit_scoring.constraints_text(targets)
@@ -208,7 +223,7 @@ def tailor_handler(user_id: int, payload: dict, index: int) -> dict:
         )
 
     store.add_application(user_id, external_id)
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "tailor")
     resume = resume_tailoring.run(
         llm, graph, posting["title"], posting["company"], posting["description"] or ""
     )
@@ -239,7 +254,7 @@ def outreach_handler(user_id: int, payload: dict, index: int) -> dict:
     if not stored:
         raise RuntimeError("Tailor the resume for this job first")
 
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "outreach")
     pack = outreach.run(
         llm, _graph(user_id), TailoredResume.model_validate(stored),
         posting["title"], posting["company"], posting["description"] or "",
@@ -261,7 +276,7 @@ def prep_handler(user_id: int, payload: dict, index: int) -> dict:
     cached = store.load_company_intel(posting["company"])
     intel = CompanyIntel.model_validate(cached) if cached else None
 
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "prep")
     brief = interview_prep.run(
         llm, _graph(user_id), posting["title"], posting["company"],
         posting["description"] or "", intel, payload.get("stage", "screen"),
@@ -290,7 +305,7 @@ def intel_handler(user_id: int, payload: dict, index: int) -> dict:
         return {"log": [f"served from shared cache for {posting['company']} — no cost"],
                 "result": cached}
 
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "intel")
     intel = company_intel.run(
         llm, posting["company"], posting["title"], posting["description"] or ""
     )
@@ -312,7 +327,7 @@ def comp_handler(user_id: int, payload: dict, index: int) -> dict:
     stated = compensation.extract_stated_comp(posting["description"] or "")
     log = [f"posting states {stated[0]:g}-{stated[1]:g} {stated[2]} (extracted free)"] if stated else []
 
-    llm = user_llm(user_id)
+    llm = _llm(user_id, "comp")
     estimate = compensation.run(
         llm, posting["title"], posting["company"], posting["location"],
         posting["description"] or "", graph.total_years_experience, graph.seniority,

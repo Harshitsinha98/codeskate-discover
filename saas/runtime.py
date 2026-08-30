@@ -1,27 +1,41 @@
-"""Per-user LLM runtime.
+"""Per-user LLM runtime, on the platform's own API key.
 
-Builds an LLM client bound to one user: their decrypted key, their chosen models,
-their spend ceiling, and cost recorded against their row. The spend guard from the
-single-user tool carries over unchanged — it just reads and writes Postgres now,
-through the recorder protocol rather than a SQLite connection.
+Bring-your-own-key is gone. Asking a job seeker to create an OpenAI account, add
+a card and paste a key was a wall most would never climb, and if they were paying
+the model provider directly there was little left to charge a subscription for.
+The two models contradicted each other.
 
-Per-user limits matter more in a hosted product than locally. One user's runaway
-loop must not be able to exhaust anyone else's budget, and since keys are BYOK the
-blast radius of a bug lands on the account that triggered it.
+The consequence is that usage now spends the operator's money, so the guard rails
+move from "a dollar ceiling the user sets" to "a run quota the plan sets". Cost is
+the operator's concern; the user sees runs, not dollars.
+
+The spend recorder still writes every call to the database. It is no longer a
+budget the user controls, but it is how quotas are counted and how per-user unit
+economics stay visible.
 """
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from codeskate.llm import LLM, SpendRecorder
+from codeskate.llm import LLM
 from codeskate.settings import Settings
 
-from . import crypto, store
+from . import store
+
+DEFAULT_MODELS = {
+    "openai": ("gpt-5.6-luna", "gpt-5.6-terra"),
+    "anthropic": ("claude-haiku-4-5", "claude-sonnet-5"),
+}
 
 
-class PostgresRecorder:
-    """Records spend against one user. Implements codeskate.llm.SpendRecorder."""
+class PlatformKeyMissing(RuntimeError):
+    """Configuration fault, not a user error. The message is for the operator."""
+
+
+class UsageRecorder:
+    """Records every call against a user. Implements codeskate.llm.SpendRecorder."""
 
     def __init__(self, user_id: int) -> None:
         self.user_id = user_id
@@ -33,36 +47,46 @@ class PostgresRecorder:
         store.log_call(self.user_id, **kw)
 
 
-class MissingKey(RuntimeError):
-    pass
+def platform_provider() -> str:
+    return os.getenv("LLM_PROVIDER", "openai").strip().lower()
 
 
-DEFAULT_MODELS = {
-    "openai": ("gpt-5.6-luna", "gpt-5.6-terra"),
-    "anthropic": ("claude-haiku-4-5", "claude-sonnet-5"),
-}
+def platform_key() -> str:
+    provider = platform_provider()
+    var = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+    key = os.getenv(var, "").strip()
+    if not key:
+        raise PlatformKeyMissing(
+            f"{var} is not set on the server. Agents cannot run until the operator "
+            "configures the platform API key."
+        )
+    return key
+
+
+def configured() -> bool:
+    try:
+        platform_key()
+        return True
+    except PlatformKeyMissing:
+        return False
 
 
 def user_llm(user_id: int) -> LLM:
-    """Construct the client for one user, or explain what is missing."""
-    record = store.get_user_key(user_id)
-    if not record:
-        raise MissingKey(
-            "Add your OpenAI or Anthropic API key in Settings before running an agent."
-        )
+    """An LLM client that bills the platform and records usage against one user.
 
-    user = store.user_by_id(user_id)
-    if user is None:
-        raise MissingKey("Account not found")
-
-    provider = record["provider"]
+    spend_limit_usd is set high on purpose: the real ceiling is the plan's run
+    quota, checked in quota.check() before work is queued and again before each
+    unit runs. Leaving a dollar guard here too means a pricing mistake or a
+    pathologically expensive prompt still cannot run unbounded.
+    """
+    provider = platform_provider()
     cheap_default, smart_default = DEFAULT_MODELS.get(provider, DEFAULT_MODELS["openai"])
 
     settings = Settings(
         provider=provider,
-        api_key=crypto.decrypt(record["key_ciphertext"]),
-        model_cheap=record.get("model_cheap") or cheap_default,
-        model_smart=record.get("model_smart") or smart_default,
-        spend_limit_usd=float(user["spend_limit_usd"]),
+        api_key=platform_key(),
+        model_cheap=os.getenv("LLM_MODEL_CHEAP", cheap_default).strip(),
+        model_smart=os.getenv("LLM_MODEL_SMART", smart_default).strip(),
+        spend_limit_usd=float(os.getenv("PER_USER_HARD_USD_CEILING", "25")),
     )
-    return LLM(settings, PostgresRecorder(user_id))
+    return LLM(settings, UsageRecorder(user_id))

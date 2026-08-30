@@ -14,17 +14,21 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import secrets
+from urllib.parse import quote
+
 from fastapi import Cookie, Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from codeskate.agents import career_manager, pipeline
 from codeskate.models import SkillGraph
 
-from . import admin, auth, crypto, handlers, mailer, queue, store  # handlers registers kinds
+from . import admin, auth, billing, google_auth, handlers, plans, queue, quota, store  # handlers registers kinds
 from .engine import create_all
-from .runtime import DEFAULT_MODELS, MissingKey
+from . import runtime
+from .runtime import PlatformKeyMissing
 
 STATIC = Path(__file__).parent / "static"
 SECURE_COOKIES = os.getenv("SECURE_COOKIES", "1") != "0"
@@ -63,44 +67,66 @@ def current_user(cs_session: str | None = Cookie(default=None)) -> dict:
     return user
 
 
-class Credentials(BaseModel):
-    email: str
-    password: str
+# --------------------------------------------------------------------------- #
+# Google sign-in
+# --------------------------------------------------------------------------- #
 
 
-@app.post("/api/auth/signup")
-def signup(body: Credentials, response: Response) -> dict:
+@app.get("/api/auth/google/start")
+def google_start(response: Response) -> dict:
+    """Hand the browser a Google URL plus a state cookie to be echoed back."""
+    if not google_auth.configured():
+        raise HTTPException(
+            503,
+            "Google sign-in is not configured on this deployment. The operator must "
+            "set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        )
+    state = google_auth.new_state()
+    response.set_cookie(value=state, **auth.state_cookie_kwargs(SECURE_COOKIES))
+    return {"url": google_auth.authorize_url(state)}
+
+
+@app.get("/api/auth/google/callback")
+def google_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    cs_oauth_state: str | None = Cookie(default=None),
+) -> RedirectResponse:
+    """Where Google returns the user. Always ends in a redirect, never JSON."""
+    base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+
+    def fail(reason: str) -> RedirectResponse:
+        return RedirectResponse(f"{base}/?auth_error={quote(reason)}", status_code=303)
+
+    if error:
+        return fail("Sign-in was cancelled")
+    if not code:
+        return fail("Google did not return an authorization code")
+    # The state cookie is the CSRF defence: without it, an attacker could feed a
+    # victim's browser a code of their choosing.
+    if not state or not cs_oauth_state or not secrets.compare_digest(state, cs_oauth_state):
+        return fail("Sign-in session expired — please try again")
+
     try:
-        email = auth.validate_email(body.email)
-        password = auth.validate_password(body.password)
-    except auth.AuthError as e:
-        raise HTTPException(400, str(e)) from e
+        identity = google_auth.exchange_code(code)
+    except google_auth.GoogleAuthError as e:
+        return fail(str(e))
 
-    if store.user_by_email(email):
-        raise HTTPException(400, "An account with that email already exists")
-
-    user_id = store.create_user(email, auth.hash_password(password))
-    session = auth.new_session()
-    store.create_session(session.token_hash, user_id)
-    response.set_cookie(value=session.token, **auth.cookie_kwargs(SECURE_COOKIES))
-    return {"email": email}
-
-
-@app.post("/api/auth/login")
-def login(body: Credentials, response: Response) -> dict:
-    user = store.user_by_email(body.email or "")
-    # Same message either way — revealing which emails exist helps nobody but an
-    # attacker enumerating accounts.
-    if not user or not auth.verify_password(body.password or "", user["password_hash"]):
-        raise HTTPException(401, "Email or password is incorrect")
+    user = store.upsert_google_user(
+        identity["sub"], identity["email"], identity["name"], identity.get("picture")
+    )
     if not user["is_active"]:
-        raise HTTPException(403, "This account is disabled")
+        return fail("This account has been disabled")
 
     session = auth.new_session()
     store.create_session(session.token_hash, user["id"])
-    store.touch_login(user["id"])
-    response.set_cookie(value=session.token, **auth.cookie_kwargs(SECURE_COOKIES))
-    return {"email": user["email"]}
+
+    redirect = RedirectResponse(f"{base}/", status_code=303)
+    redirect.set_cookie(value=session.token, **auth.cookie_kwargs(SECURE_COOKIES))
+    redirect.delete_cookie(auth.STATE_COOKIE, path="/")
+    return redirect
 
 
 @app.post("/api/auth/logout")
@@ -111,100 +137,112 @@ def logout(response: Response, cs_session: str | None = Cookie(default=None)) ->
     return {"ok": True}
 
 
-# --------------------------------------------------------------------------- #
-# password reset
-# --------------------------------------------------------------------------- #
-
-
-class ForgotBody(BaseModel):
-    email: str
-
-
-@app.post("/api/auth/forgot")
-def forgot_password(body: ForgotBody, request: Request) -> dict:
-    """Always reports success.
-
-    Reporting whether an address exists turns this endpoint into an account
-    enumeration tool, so the response is identical either way and the work happens
-    only when there is really an account.
-    """
-    user = store.user_by_email(body.email or "")
-    if user and user["is_active"]:
-        session = auth.new_session()  # same generator: random token, hash stored
-        store.create_password_reset(session.token_hash, user["id"])
-        base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
-        mailer.send_password_reset(user["email"], f"{base}/reset?token={session.token}")
-
+@app.get("/api/config")
+def public_config() -> dict:
+    """What the sign-in screen needs before anyone is authenticated."""
     return {
-        "ok": True,
-        "detail": "If that email has an account, a reset link is on its way.",
-        # Tells the UI to warn the operator, without leaking anything about the
-        # account: with no provider configured the link only reaches the log.
-        "mail_configured": mailer.configured(),
+        "google_configured": google_auth.configured(),
+        "billing_configured": billing.configured(),
+        "plans": plans.catalogue(),
     }
 
 
-class ResetBody(BaseModel):
-    token: str
-    password: str
+# --------------------------------------------------------------------------- #
+# billing
+# --------------------------------------------------------------------------- #
 
 
-@app.post("/api/auth/reset")
-def reset_password(body: ResetBody) -> dict:
+class CheckoutBody(BaseModel):
+    plan: str = Field(default="pro", pattern="^(pro)$")
+    months: int = Field(default=1, ge=1, le=12)
+
+
+@app.post("/api/billing/checkout")
+def billing_checkout(body: CheckoutBody, user: dict = Depends(current_user)) -> dict:
+    if not billing.configured():
+        raise HTTPException(503, "Payments are not configured on this deployment yet.")
     try:
-        password = auth.validate_password(body.password)
-    except auth.AuthError as e:
+        return billing.create_order(user["id"], body.plan, body.months)
+    except billing.BillingError as e:
         raise HTTPException(400, str(e)) from e
 
-    user_id = store.consume_password_reset(auth.hash_token(body.token or ""))
-    if user_id is None:
-        raise HTTPException(400, "That reset link is invalid, already used, or expired")
 
-    store.set_password(user_id, auth.hash_password(password))
-    return {"ok": True, "detail": "Password changed. Sign in with your new password."}
+class ConfirmBody(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+    plan: str = "pro"
+    months: int = Field(default=1, ge=1, le=12)
+
+
+@app.post("/api/billing/confirm")
+def billing_confirm(body: ConfirmBody, user: dict = Depends(current_user)) -> dict:
+    """Called by the browser after Checkout succeeds.
+
+    A valid signature proves the values came from Razorpay; fetching the payment
+    proves it was actually captured and for how much. Both are required — the
+    browser is not a trustworthy narrator of its own purchase.
+    """
+    if not billing.verify_signature(
+        body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature
+    ):
+        raise HTTPException(400, "Payment signature did not verify")
+
+    try:
+        payment = billing.fetch_payment(body.razorpay_payment_id)
+    except billing.BillingError as e:
+        raise HTTPException(502, str(e)) from e
+
+    if payment.get("status") not in ("captured", "authorized"):
+        raise HTTPException(400, f"Payment is not complete (status: {payment.get('status')})")
+
+    expected = plans.plan_for(body.plan).price_inr * 100 * body.months
+    if int(payment.get("amount") or 0) < expected:
+        raise HTTPException(400, "Paid amount does not match the selected plan")
+
+    fresh = store.record_payment(
+        user["id"], body.razorpay_payment_id, body.razorpay_order_id,
+        int(payment["amount"]), payment["status"], body.plan, body.months, payment,
+    )
+    if fresh:
+        expiry = store.extend_plan(user["id"], body.plan, body.months)
+    else:
+        # Already applied, most likely by the webhook arriving first.
+        expiry = store.user_by_id(user["id"])["plan_expires_at"]
+
+    return {"plan": body.plan, "expires_at": str(expiry), "already_applied": not fresh}
+
+
+@app.post("/api/billing/webhook")
+async def billing_webhook(request: Request) -> dict:
+    """Server-to-server confirmation, so a closed tab cannot lose a paid month."""
+    body = await request.body()
+    signature = request.headers.get("x-razorpay-signature", "")
+    if not billing.verify_webhook(body, signature):
+        raise HTTPException(400, "invalid webhook signature")
+
+    parsed = billing.parse_webhook_payment(body)
+    if not parsed or not parsed["user_id"] or not parsed["plan"]:
+        return {"ignored": True}
+
+    fresh = store.record_payment(
+        parsed["user_id"], parsed["payment_id"], parsed["order_id"],
+        parsed["amount_paise"], parsed["status"], parsed["plan"], parsed["months"],
+        parsed["raw"],
+    )
+    if fresh:
+        store.extend_plan(parsed["user_id"], parsed["plan"], parsed["months"])
+    return {"applied": fresh}
+
+
+@app.get("/api/billing/history")
+def billing_history(user: dict = Depends(current_user)) -> dict:
+    return {"payments": store.list_payments(user["id"])}
 
 
 # --------------------------------------------------------------------------- #
 # settings
 # --------------------------------------------------------------------------- #
-
-
-class KeyBody(BaseModel):
-    provider: str = Field(pattern="^(openai|anthropic)$")
-    api_key: str
-    model_cheap: str | None = None
-    model_smart: str | None = None
-
-
-@app.post("/api/settings/key")
-def save_key(body: KeyBody, user: dict = Depends(current_user)) -> dict:
-    key = body.api_key.strip()
-    if len(key) < 20:
-        raise HTTPException(400, "That does not look like a valid API key")
-
-    cheap_default, smart_default = DEFAULT_MODELS[body.provider]
-    store.save_user_key(
-        user["id"], body.provider, crypto.encrypt(key), crypto.hint(key),
-        (body.model_cheap or cheap_default).strip(),
-        (body.model_smart or smart_default).strip(),
-    )
-    return {"provider": body.provider, "hint": crypto.hint(key)}
-
-
-@app.delete("/api/settings/key")
-def remove_key(user: dict = Depends(current_user)) -> dict:
-    store.delete_user_key(user["id"])
-    return {"ok": True}
-
-
-class LimitBody(BaseModel):
-    spend_limit_usd: float = Field(ge=0, le=1000)
-
-
-@app.post("/api/settings/limit")
-def set_limit(body: LimitBody, user: dict = Depends(current_user)) -> dict:
-    store.set_spend_limit(user["id"], body.spend_limit_usd)
-    return {"spend_limit_usd": body.spend_limit_usd}
 
 
 class TargetsBody(BaseModel):
@@ -225,7 +263,6 @@ def save_targets(body: TargetsBody, user: dict = Depends(current_user)) -> dict:
 @app.get("/api/me")
 def me(user: dict = Depends(current_user)) -> dict:
     user_id = user["id"]
-    key = store.get_user_key(user_id)
     raw = store.load_profile(user_id)
     graph = SkillGraph.model_validate(raw) if raw else None
     counts = store.stage_counts(user_id)
@@ -233,12 +270,12 @@ def me(user: dict = Depends(current_user)) -> dict:
     return {
         "email": user["email"],
         "is_admin": admin.is_admin(user["email"]),
-        "mail_configured": mailer.configured(),
-        "spend": {"used": round(store.total_spend(user_id), 4),
-                  "limit": float(user["spend_limit_usd"])},
-        "key": None if not key else {"provider": key["provider"], "hint": key["key_hint"],
-                                     "model_cheap": key["model_cheap"],
-                                     "model_smart": key["model_smart"]},
+        "display_name": user.get("display_name"),
+        "avatar_url": user.get("avatar_url"),
+        # Runs, not dollars. What a call costs is the operator's problem.
+        "quota": quota.status(user),
+        "billing_configured": billing.configured(),
+        "platform_ready": runtime.configured(),
         "documents": store.list_documents(user_id),
         "profile": None if graph is None else {
             "name": graph.candidate_name, "headline": graph.headline,
@@ -344,8 +381,16 @@ LABELS = {
 def start_job(kind: str, body: JobBody, user: dict = Depends(current_user)) -> dict:
     if kind not in LABELS:
         raise HTTPException(404, f"unknown action: {kind}")
-    if kind != "discover" and not store.get_user_key(user["id"]):
-        raise HTTPException(400, "Add your API key in Settings first")
+    # Discovery is free and uses no model, so it is not metered.
+    if kind != "discover":
+        try:
+            quota.check(user, kind)
+        except quota.QuotaExceeded as e:
+            raise HTTPException(402, str(e)) from e
+        if not runtime.configured():
+            raise HTTPException(
+                503, "The service is not fully configured yet. Please try again later."
+            )
 
     payload: dict = {}
     if kind in handlers.SINGLE_JOB_KINDS:
@@ -358,11 +403,19 @@ def start_job(kind: str, body: JobBody, user: dict = Depends(current_user)) -> d
             raise HTTPException(400, "Describe the role you are targeting")
         payload["role"] = body.role.strip()
     if kind == "score":
-        payload["limit"] = body.limit
+        # Clamp to what the plan and the remaining allowance permit, rather than
+        # queueing work that will die part-way through.
+        allowed = quota.batch_limit(user, body.limit)
+        if allowed == 0:
+            raise HTTPException(402, quota.status(user)["plan"] == "free"
+                                and "You have used your free agent runs for this month. "
+                                    "Upgrade to Pro to keep scoring."
+                                or "You have used this month's agent runs.")
+        payload["limit"] = allowed
 
     try:
         job = queue.enqueue(user["id"], kind, LABELS[kind], payload)
-    except (RuntimeError, MissingKey) as e:
+    except (RuntimeError, PlatformKeyMissing) as e:
         raise HTTPException(400, str(e)) from e
 
     # Nudge the worker so short jobs finish within this request.
@@ -541,12 +594,19 @@ def next_actions(user: dict = Depends(current_user)) -> dict:
     return {"actions": actions[:8]}
 
 
-@app.get("/api/spend")
-def spend(user: dict = Depends(current_user)) -> dict:
+@app.get("/api/usage")
+def usage(user: dict = Depends(current_user)) -> dict:
+    """Usage in runs. Deliberately no dollar figures: the model bill is the
+    operator's concern, and showing it would invite users to optimise the wrong
+    thing."""
+    rows = store.spend_by_agent(user["id"])
     return {
-        "total": round(store.total_spend(user["id"]), 4),
-        "limit": float(user["spend_limit_usd"]),
-        "by_agent": store.spend_by_agent(user["id"]),
+        "quota": quota.status(user),
+        "by_agent": [
+            {"agent": r["agent"], "runs": r["calls"],
+             "input_tokens": r["tin"], "output_tokens": r["tout"]}
+            for r in rows
+        ],
     }
 
 
@@ -673,12 +733,6 @@ def privacy() -> FileResponse:
 @app.get("/terms")
 def terms() -> FileResponse:
     return FileResponse(STATIC / "terms.html")
-
-
-@app.get("/reset")
-def reset_page() -> FileResponse:
-    """The password-reset link lands here; the SPA reads the token from the query."""
-    return FileResponse(STATIC / "index.html")
 
 
 # --------------------------------------------------------------------------- #

@@ -1,8 +1,8 @@
 """Owner-facing metrics.
 
-What this deliberately does NOT expose: uploaded documents, skill graphs,
-tailored resumes, or decrypted API keys. The owner needs to know how many people
-signed up, where they stall, and what is breaking — none of which requires reading
+What this deliberately does NOT expose: uploaded documents, skill graphs, or
+generated resumes. The owner needs to know how many people signed up, where they
+stall, what they pay, and what is breaking — none of which requires reading
 anyone's resume.
 
 That boundary is worth keeping even though the owner controls the database. It
@@ -60,7 +60,6 @@ def overview() -> dict:
 
         # Activation funnel. Each step is where users stop, which is the only
         # number that tells you what to fix next.
-        with_key = c.execute(select(func.count()).select_from(s.user_keys)).scalar_one()
         with_docs = c.execute(
             select(func.count(func.distinct(s.documents.c.user_id)))
         ).scalar_one()
@@ -76,11 +75,21 @@ def overview() -> dict:
             .where(s.applications.c.stage.not_in(["shortlisted", "tailored"]))
         ).scalar_one()
 
+        paying = c.execute(
+            select(func.count()).select_from(s.users)
+            .where(and_(s.users.c.plan == "pro", s.users.c.plan_expires_at > _now()))
+        ).scalar_one()
+        revenue_paise = c.execute(
+            select(func.coalesce(func.sum(s.payments.c.amount_paise), 0))
+            .where(s.payments.c.status.in_(["captured", "authorized"]))
+        ).scalar_one()
+
         postings = c.execute(select(func.count()).select_from(s.job_postings)).scalar_one()
         intel_cached = c.execute(select(func.count()).select_from(s.company_intel)).scalar_one()
 
         calls = c.execute(select(func.count()).select_from(s.llm_calls)).scalar_one()
-        # Spend is on users' own keys. Useful as a usage signal, not as a bill.
+        # Model spend is now the operator's cost, so this is a real bill rather
+        # than a usage curiosity. Read it against revenue below.
         spend = c.execute(
             select(func.coalesce(func.sum(s.llm_calls.c.cost_usd), 0.0))
         ).scalar_one()
@@ -116,17 +125,24 @@ def overview() -> dict:
             "total": int(total_users), "new_7d": int(new_week),
             "active_24h": int(active_day), "disabled": int(disabled),
         },
+        "revenue": {
+            "paying_now": int(paying),
+            "total_collected_inr": round(int(revenue_paise) / 100, 2),
+            # Simple run-rate, not a forecast: current subscribers times the price.
+            "mrr_inr": int(paying) * 999,
+            "conversion_pct": round(int(paying) / total_users * 100, 1) if total_users else 0.0,
+        },
         "funnel": [
             step("signed up", total_users),
-            step("added API key", with_key),
             step("uploaded documents", with_docs),
             step("built skill graph", with_profile),
             step("scored matches", with_scores),
             step("shortlisted a job", with_apps),
             step("actually applied", with_applied),
+            step("upgraded to Pro", paying),
         ],
         "shared": {"postings": int(postings), "company_intel_cached": int(intel_cached)},
-        "usage": {"llm_calls": int(calls), "spend_on_user_keys_usd": round(float(spend), 4)},
+        "usage": {"llm_calls": int(calls), "model_cost_usd": round(float(spend), 4)},
         "queue": {r[0]: int(r[1]) for r in queue_rows},
         "recent_errors": [
             {"job_id": r[0], "kind": r[1], "error": (r[2] or "")[:200],
@@ -146,8 +162,8 @@ def users(limit: int = 100, offset: int = 0) -> dict:
         rows = c.execute(
             select(
                 s.users.c.id, s.users.c.email, s.users.c.created_at,
-                s.users.c.last_login_at, s.users.c.is_active, s.users.c.spend_limit_usd,
-                s.user_keys.c.provider, s.user_keys.c.key_hint,
+                s.users.c.last_login_at, s.users.c.is_active,
+                s.users.c.display_name, s.users.c.plan, s.users.c.plan_expires_at,
                 select(func.count()).select_from(s.documents)
                 .where(s.documents.c.user_id == s.users.c.id)
                 .scalar_subquery().label("docs"),
@@ -164,7 +180,7 @@ def users(limit: int = 100, offset: int = 0) -> dict:
                 .where(s.llm_calls.c.user_id == s.users.c.id)
                 .scalar_subquery().label("spend"),
             )
-            .select_from(s.users.outerjoin(s.user_keys, s.user_keys.c.user_id == s.users.c.id))
+            .select_from(s.users)
             .order_by(desc(s.users.c.id))
             .limit(limit).offset(offset)
         ).all()
@@ -175,10 +191,10 @@ def users(limit: int = 100, offset: int = 0) -> dict:
             {
                 "id": r.id, "email": r.email, "created_at": str(r.created_at),
                 "last_login_at": str(r.last_login_at) if r.last_login_at else None,
-                "is_active": bool(r.is_active), "spend_limit_usd": float(r.spend_limit_usd),
-                # Provider and last four characters only. The key itself is never
-                # decrypted here.
-                "key_provider": r.provider, "key_hint": r.key_hint,
+                "is_active": bool(r.is_active),
+                "display_name": r.display_name,
+                "plan": r.plan,
+                "plan_expires_at": str(r.plan_expires_at) if r.plan_expires_at else None,
                 "documents": int(r.docs), "has_profile": bool(r.has_profile),
                 "scored": int(r.scored), "pipeline": int(r.pipeline),
                 "spend_usd": round(float(r.spend), 4),

@@ -43,44 +43,50 @@ metadata = MetaData()
 # accounts
 # --------------------------------------------------------------------------- #
 
+# Google is the only sign-in method. That removes passwords, password hashing,
+# reset tokens and outbound email from the system entirely — a large amount of
+# security-sensitive code that no longer has to be right, in exchange for a
+# smoother sign-up than most people would complete anyway.
 users = Table(
     "users",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("email", String(320), nullable=False, unique=True),
-    Column("password_hash", Text, nullable=False),
+    # Google's stable subject identifier. Matched on in preference to email,
+    # because a Google account can change its email address.
+    Column("google_sub", String(64), unique=True),
+    Column("display_name", String(200)),
+    Column("avatar_url", Text),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
     Column("last_login_at", DateTime(timezone=True)),
-    # Per-user ceiling on their own key. Defence against a runaway loop.
-    Column("spend_limit_usd", Float, nullable=False, default=5.0),
     Column("is_active", Boolean, nullable=False, default=True),
+    # Subscription. plan_expires_at is checked on read, so a lapsed subscriber
+    # loses Pro immediately rather than waiting for a scheduled downgrade.
+    Column("plan", String(16), nullable=False, default="free"),
+    Column("plan_expires_at", DateTime(timezone=True)),
+    Column("razorpay_customer_id", String(64)),
+    Column("razorpay_subscription_id", String(64)),
 )
 
-# Bring-your-own-key, encrypted at rest. Stored separately from `users` so a
-# query that only needs account fields cannot accidentally select ciphertext.
-user_keys = Table(
-    "user_keys",
+# Payment records, kept so a disputed charge can be reconciled without asking the
+# gateway. Amounts are stored in paise, as integers — money in floats invites
+# rounding errors that only surface in a refund.
+payments = Table(
+    "payments",
     metadata,
-    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-    Column("provider", String(16), nullable=False),
-    Column("key_ciphertext", Text, nullable=False),
-    Column("key_hint", String(16), nullable=False),  # last 4 chars, for the UI
-    Column("model_cheap", String(64)),
-    Column("model_smart", String(64)),
-    Column("updated_at", DateTime(timezone=True), server_default=func.now()),
-)
-
-# Reset tokens are stored hashed, like sessions, and are single-use. `used_at`
-# rather than deletion so a replayed link can be told apart from an expired one.
-password_resets = Table(
-    "password_resets",
-    metadata,
-    Column("token_hash", String(64), primary_key=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("provider", String(16), nullable=False, default="razorpay"),
+    Column("provider_payment_id", String(64), unique=True),
+    Column("provider_order_id", String(64)),
+    Column("amount_paise", Integer, nullable=False),
+    Column("currency", String(8), nullable=False, default="INR"),
+    Column("status", String(24), nullable=False),
+    Column("plan", String(16)),
+    Column("months", Integer, default=1),
+    Column("raw", JSON),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
-    Column("expires_at", DateTime(timezone=True), nullable=False),
-    Column("used_at", DateTime(timezone=True)),
-    Index("ix_resets_user", "user_id"),
+    Index("ix_payments_user", "user_id"),
 )
 
 sessions = Table(

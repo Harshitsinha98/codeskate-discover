@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CodeSkate — AI agents for your job hunt</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
   body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   .log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
@@ -12,80 +13,37 @@
 </head>
 <body class="h-full bg-slate-950 text-slate-200">
 
-<!-- ================= AUTH ================= -->
-<div id="authView" class="hidden min-h-full grid place-items-center px-5">
-  <div class="w-full max-w-sm">
-    <div class="text-center mb-7">
-      <div class="text-2xl font-semibold text-white tracking-tight">CodeSkate</div>
-      <p class="text-sm text-slate-400 mt-2">
-        A team of 18 AI agents that finds and wins you a better job.
+<!-- ================= SIGN IN ================= -->
+<div id="authView" class="hidden min-h-full grid place-items-center px-5 py-10">
+  <div class="w-full max-w-md">
+    <div class="text-center">
+      <div class="text-3xl font-semibold text-white tracking-tight">CodeSkate</div>
+      <p class="text-slate-400 mt-3">
+        18 AI agents that find the jobs worth your time, tailor your resume without
+        inventing anything, and prepare you for the interview.
       </p>
     </div>
 
-    <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-      <div class="flex gap-1 mb-5 text-sm">
-        <button id="tabLogin" class="authtab flex-1 py-2 rounded">Sign in</button>
-        <button id="tabSignup" class="authtab flex-1 py-2 rounded">Create account</button>
-      </div>
-
-      <form id="authForm" class="space-y-3">
-        <div>
-          <label class="text-xs text-slate-500">Email</label>
-          <input id="email" type="email" required autocomplete="email"
-                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm
-                        focus:border-indigo-500 focus:outline-none">
-        </div>
-        <div>
-          <label class="text-xs text-slate-500">Password</label>
-          <input id="password" type="password" required minlength="10"
-                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm
-                        focus:border-indigo-500 focus:outline-none">
-          <p id="pwHint" class="hidden text-xs text-slate-500 mt-1">At least 10 characters.</p>
-        </div>
-        <div id="authError" class="hidden text-sm text-rose-400"></div>
-        <div id="authNotice" class="hidden text-sm text-emerald-400"></div>
-        <button id="authSubmit" type="submit"
-                class="w-full py-2.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white
-                       text-sm font-medium disabled:opacity-50">Sign in</button>
-      </form>
-
-      <button id="btnForgot" class="mt-3 text-xs text-slate-500 hover:text-slate-300">
-        Forgot your password?
+    <div class="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+      <button id="btnGoogle"
+              class="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-white
+                     text-slate-800 font-medium hover:bg-slate-100 transition">
+        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.4h12.7c-.3 2.1-1.6 5.2-4.6 7.3l7.6 5.9c4.5-4.2 6.8-10.3 6.8-17.5z"/><path fill="#FBBC05" d="M10.4 28.7a14.8 14.8 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.7-5.9l-7.6-5.9c-2 1.4-4.8 2.4-8.1 2.4-6.3 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+        Continue with Google
       </button>
+      <div id="authError" class="hidden mt-4 text-sm text-rose-400"></div>
+      <div id="authNotice" class="hidden mt-4 text-sm text-amber-400"></div>
+      <p class="text-xs text-slate-500 mt-4">
+        No password to remember. We only read your name, email and profile picture.
+      </p>
     </div>
 
-    <p class="text-xs text-slate-600 mt-4 text-center">
-      You supply your own OpenAI or Anthropic API key, so your usage bills your
-      account directly. Keys are encrypted at rest and never shown back to you.
-    </p>
-    <p class="text-xs text-slate-600 mt-2 text-center">
+    <div id="planCards" class="mt-6 grid sm:grid-cols-2 gap-3"></div>
+
+    <p class="text-xs text-slate-600 mt-6 text-center">
       <a href="/privacy" class="hover:text-slate-400 underline">Privacy</a> ·
       <a href="/terms" class="hover:text-slate-400 underline">Terms</a>
     </p>
-  </div>
-</div>
-
-<!-- ================= RESET PASSWORD ================= -->
-<div id="resetView" class="hidden min-h-full grid place-items-center px-5">
-  <div class="w-full max-w-sm">
-    <div class="text-center mb-7">
-      <div class="text-2xl font-semibold text-white tracking-tight">Set a new password</div>
-      <p class="text-sm text-slate-400 mt-2">This link works once and expires in 60 minutes.</p>
-    </div>
-    <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-      <form id="resetForm" class="space-y-3">
-        <div>
-          <label class="text-xs text-slate-500">New password</label>
-          <input id="newPassword" type="password" required minlength="10"
-                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm
-                        focus:border-indigo-500 focus:outline-none">
-          <p class="text-xs text-slate-500 mt-1">At least 10 characters.</p>
-        </div>
-        <div id="resetError" class="hidden text-sm text-rose-400"></div>
-        <button type="submit" class="w-full py-2.5 rounded bg-indigo-600 hover:bg-indigo-500
-                text-white text-sm font-medium">Change password</button>
-      </form>
-    </div>
   </div>
 </div>
 
@@ -95,14 +53,15 @@
     <div class="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
       <div class="font-semibold tracking-tight text-white">CodeSkate</div>
       <div class="ml-auto flex items-center gap-4 text-xs">
-        <div class="text-right">
-          <div class="text-slate-500">spend</div>
-          <div id="spendText" class="font-medium">$0.0000</div>
+        <div id="planBadge" class="px-2 py-1 rounded bg-slate-800"></div>
+        <div class="text-right hidden sm:block">
+          <div class="text-slate-500">agent runs</div>
+          <div id="runsText" class="font-medium">—</div>
         </div>
         <div class="w-20 h-1.5 bg-slate-800 rounded overflow-hidden">
-          <div id="spendBar" class="h-full bg-emerald-500" style="width:0%"></div>
+          <div id="runsBar" class="h-full bg-emerald-500" style="width:0%"></div>
         </div>
-        <div id="userEmail" class="text-slate-400 hidden sm:block"></div>
+        <img id="avatar" class="w-6 h-6 rounded-full hidden" alt="">
         <button id="btnLogout" class="text-slate-500 hover:text-slate-200">Sign out</button>
       </div>
     </div>
@@ -110,7 +69,7 @@
       <button data-tab="home"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Get started</button>
       <button data-tab="matches"  class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Matches</button>
       <button data-tab="pipeline" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Pipeline</button>
-      <button data-tab="cost"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Cost</button>
+      <button data-tab="plan"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Plan &amp; usage</button>
       <button data-tab="settings" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Settings</button>
       <button data-tab="admin" id="adminTab" class="tab hidden px-3 py-2 border-b-2 border-transparent whitespace-nowrap text-amber-400">Admin</button>
     </div>
@@ -167,7 +126,7 @@
         <div class="flex items-start gap-3">
           <div id="s3dot" data-n="3" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">3</div>
           <div class="flex-1">
-            <h2 class="font-medium text-white">Live jobs <span class="text-xs text-emerald-500 font-normal">Agent 4 · free</span></h2>
+            <h2 class="font-medium text-white">Live jobs <span class="text-xs text-emerald-500 font-normal">Agent 4 · free, no runs used</span></h2>
             <p class="text-sm text-slate-400 mt-1">
               Reads companies' own public boards — Greenhouse, Lever, Ashby, Workday.
               Runs one board at a time in the background, so you can keep working.
@@ -194,6 +153,7 @@
               <label class="text-sm text-slate-400">max
                 <input id="scoreLimit" type="number" value="25" min="1" max="200"
                        class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1"></label>
+              <span id="batchHint" class="text-xs text-slate-500"></span>
             </div>
           </div>
         </div>
@@ -232,8 +192,8 @@
       </div>
       <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
         <b>The test that matters:</b> read the top 20 and ask — would I actually apply to 15 of these?
-        If not, your filters in Settings need work, or your target companies do. Polished
-        applications to jobs you don't want are worth nothing.
+        If not, your filters or your target companies need work. Polished applications
+        to jobs you don't want are worth nothing.
       </div>
       <div id="matchList" class="space-y-2"></div>
     </section>
@@ -246,61 +206,22 @@
       <div id="appList" class="space-y-2"></div>
     </section>
 
-    <!-- COST -->
-    <section id="tab-cost" class="tabpane hidden space-y-4">
-      <h2 class="font-medium text-white">What you have spent</h2>
-      <p class="text-sm text-slate-400">
-        Charged to your own API key. Logged per agent on every call, and the spend
-        guard refuses to start a call once your limit is reached.
-      </p>
-      <div id="costBox"></div>
+    <!-- PLAN & USAGE -->
+    <section id="tab-plan" class="tabpane hidden space-y-5 max-w-3xl">
+      <div id="quotaBox"></div>
+      <div id="upgradeBox" class="grid sm:grid-cols-2 gap-3"></div>
+      <div>
+        <h2 class="font-medium text-white mb-2">Runs by agent</h2>
+        <div id="usageBox"></div>
+      </div>
+      <div>
+        <h2 class="font-medium text-white mb-2">Payments</h2>
+        <div id="paymentsBox" class="text-sm text-slate-400"></div>
+      </div>
     </section>
 
     <!-- SETTINGS -->
     <section id="tab-settings" class="tabpane hidden space-y-5 max-w-2xl">
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <h2 class="font-medium text-white">API key</h2>
-        <p class="text-sm text-slate-400 mt-1">
-          Bring your own key so usage bills your account. Stored encrypted; only the
-          last four characters are ever shown back.
-        </p>
-        <div id="keyStatus" class="mt-3 text-sm"></div>
-        <div class="mt-4 space-y-3">
-          <div class="flex gap-2">
-            <select id="provider" class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-            </select>
-            <input id="apiKey" type="password" placeholder="sk-..."
-                   class="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <input id="modelCheap" placeholder="cheap model (optional)"
-                   class="flex-1 min-w-[160px] bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
-            <input id="modelSmart" placeholder="smart model (optional)"
-                   class="flex-1 min-w-[160px] bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
-          </div>
-          <div class="flex gap-2">
-            <button id="btnSaveKey" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save key</button>
-            <button id="btnDeleteKey" class="px-3 py-2 rounded border border-slate-700 text-sm hover:bg-slate-800">Remove</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <h2 class="font-medium text-white">Spend limit</h2>
-        <p class="text-sm text-slate-400 mt-1">
-          A hard ceiling checked before every API call, including between retries.
-          Keep it low while you are still tuning.
-        </p>
-        <div class="mt-3 flex items-center gap-2">
-          <span class="text-slate-400">$</span>
-          <input id="limitInput" type="number" step="0.5" min="0"
-                 class="w-24 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
-          <button id="btnSaveLimit" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm">Save</button>
-        </div>
-      </div>
-
       <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
         <h2 class="font-medium text-white">Job filters</h2>
         <p class="text-sm text-slate-400 mt-1">
@@ -328,14 +249,13 @@
         <h2 class="font-medium text-white">Target companies</h2>
         <p class="text-sm text-slate-400 mt-1">
           The single highest-leverage setting here. 50 companies you would actually
-          join beats 5,000 postings you don't want. One slug per line under each source.
+          join beats 5,000 postings you don't want. One slug per line.
         </p>
         <p class="text-xs text-slate-500 mt-2">
           Find a slug in a careers URL: <code class="text-slate-400">job-boards.greenhouse.io/<b>slug</b></code>,
           <code class="text-slate-400">jobs.lever.co/<b>slug</b></code>,
           <code class="text-slate-400">jobs.ashbyhq.com/<b>slug</b></code>.
-          Workday needs three parts, so those are edited as
-          <code class="text-slate-400">tenant|wd|site|search terms</code>.
+          Workday needs <code class="text-slate-400">tenant|wd|site|search terms</code>.
         </p>
         <div id="boardsStatus" class="mt-3 text-sm"></div>
         <div class="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
@@ -352,10 +272,6 @@
           <button id="btnSaveBoards" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save companies</button>
           <button id="btnResetBoards" class="px-3 py-2 rounded border border-slate-700 text-sm hover:bg-slate-800">Use defaults</button>
         </div>
-        <p class="text-xs text-slate-500 mt-3">
-          Postings are shared across all accounts, so adding a company helps everyone —
-          and means discovery cost stays flat rather than multiplying per user.
-        </p>
       </div>
 
       <p class="text-xs text-slate-600">
@@ -367,11 +283,12 @@
     <!-- ADMIN -->
     <section id="tab-admin" class="tabpane hidden space-y-5">
       <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
-        Owner view. Deliberately shows counts and status only — never users'
-        documents, skill graphs, generated resumes, or key material. That boundary is
-        enforced in code so a compromised admin account cannot read anyone's resume.
+        Owner view. Shows counts, revenue and status only — never users' documents,
+        skill graphs or generated resumes. Enforced in code so a compromised owner
+        account cannot read anyone's resume.
       </div>
       <div id="adminCards" class="grid sm:grid-cols-4 gap-3"></div>
+      <div id="adminRevenue" class="grid sm:grid-cols-4 gap-3"></div>
       <div>
         <h2 class="font-medium text-white mb-2">Activation funnel</h2>
         <p class="text-sm text-slate-400 mb-3">Where people stop is the only number that says what to fix next.</p>
@@ -428,6 +345,8 @@ async function api(path, opts = {}) {
   const r = await fetch(path, { credentials: 'same-origin', ...opts });
   const body = await r.json().catch(() => ({}));
   if (r.status === 401) { showAuth(); throw new Error(body.detail || 'Sign in to continue'); }
+  // 402 means the plan or allowance blocks this, not that anything is broken.
+  if (r.status === 402) { const e = new Error(body.detail); e.upgrade = true; throw e; }
   if (!r.ok) throw new Error(body.detail || `Request failed (${r.status})`);
   return body;
 }
@@ -435,39 +354,43 @@ const post = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'appl
                                 body: JSON.stringify(b || {}) });
 
 /* ---------------- auth ---------------- */
-let mode = 'login';
-function setMode(m) {
-  mode = m;
-  const on = 'bg-slate-800 text-white', off = 'text-slate-500 hover:text-slate-300';
-  $('#tabLogin').className  = `authtab flex-1 py-2 rounded ${m === 'login' ? on : off}`;
-  $('#tabSignup').className = `authtab flex-1 py-2 rounded ${m === 'signup' ? on : off}`;
-  $('#authSubmit').textContent = m === 'login' ? 'Sign in' : 'Create account';
-  $('#pwHint').classList.toggle('hidden', m === 'login');
-  $('#authError').classList.add('hidden');
-}
-$('#tabLogin').onclick = () => setMode('login');
-$('#tabSignup').onclick = () => setMode('signup');
-
-$('#authForm').onsubmit = async (e) => {
-  e.preventDefault();
-  $('#authSubmit').disabled = true;
-  $('#authError').classList.add('hidden');
+$('#btnGoogle').onclick = async () => {
   try {
-    await post(`/api/auth/${mode}`, { email: $('#email').value, password: $('#password').value });
-    await boot();
-  } catch (err) {
-    $('#authError').textContent = err.message;
+    const { url } = await api('/api/auth/google/start');
+    location.href = url;
+  } catch (e) {
+    $('#authError').textContent = e.message;
     $('#authError').classList.remove('hidden');
-  } finally {
-    $('#authSubmit').disabled = false;
   }
 };
-$('#btnLogout').onclick = async () => { await post('/api/auth/logout'); showAuth(); };
+$('#btnLogout').onclick = async () => { await post('/api/auth/logout'); location.href = '/'; };
 
 function showAuth() {
   $('#appView').classList.add('hidden');
   $('#authView').classList.remove('hidden');
-  setMode('login');
+  const err = new URLSearchParams(location.search).get('auth_error');
+  if (err) {
+    $('#authError').textContent = err;
+    $('#authError').classList.remove('hidden');
+    history.replaceState({}, '', '/');
+  }
+  api('/api/config').then(c => {
+    if (!c.google_configured) {
+      $('#authNotice').textContent = 'Google sign-in is not configured on this deployment yet.';
+      $('#authNotice').classList.remove('hidden');
+      $('#btnGoogle').disabled = true;
+      $('#btnGoogle').classList.add('opacity-40');
+    }
+    $('#planCards').innerHTML = c.plans.map(p => `
+      <div class="rounded-lg border ${p.key === 'pro' ? 'border-indigo-700 bg-indigo-950/20' : 'border-slate-800 bg-slate-900/40'} p-4 text-left">
+        <div class="flex items-baseline gap-2">
+          <div class="font-medium text-white">${esc(p.name)}</div>
+          <div class="text-sm text-slate-400">${p.price_inr ? '₹' + p.price_inr + '/mo' : 'free'}</div>
+        </div>
+        <ul class="mt-2 space-y-1 text-xs text-slate-400">
+          ${p.features.map(f => `<li>· ${esc(f)}</li>`).join('')}</ul>
+      </div>`).join('');
+  }).catch(() => {});
 }
 function showApp() {
   $('#authView').classList.add('hidden');
@@ -487,15 +410,22 @@ function showTab(name) {
   });
   if (name === 'matches') loadMatches();
   if (name === 'pipeline') loadPipeline();
-  if (name === 'cost') loadCost();
+  if (name === 'plan') loadPlan();
   if (name === 'settings') loadBoards();
   if (name === 'admin') loadAdmin();
 }
 
 /* ---------------- jobs ---------------- */
 let poller = null;
-async function runJob(kind, body, onDone) {
-  const { job_id } = await post(`/api/jobs/${kind}`, body);
+async function runJob(kind, body) {
+  let started;
+  try {
+    started = await post(`/api/jobs/${kind}`, body);
+  } catch (e) {
+    if (e.upgrade) { showTab('plan'); alert(e.message); return { state: 'blocked' }; }
+    throw e;
+  }
+  const jobId = started.job_id;
   $('#jobToast').classList.remove('hidden');
   $('#jobError').classList.add('hidden');
   $('#jobLog').textContent = '';
@@ -505,14 +435,11 @@ async function runJob(kind, body, onDone) {
   return new Promise((resolve) => {
     poller = setInterval(async () => {
       let j;
-      try {
-        // Nudge the worker: a long job continues without waiting for the scheduler.
-        j = await post(`/api/jobs/${job_id}/resume`);
-      } catch (e) { clearInterval(poller); return; }
+      try { j = await post(`/api/jobs/${jobId}/resume`); }
+      catch (e) { clearInterval(poller); return; }
 
       $('#jobLabel').textContent = j.label;
-      $('#jobProgress').textContent = j.units_total > 1
-        ? `${j.units_done}/${j.units_total}` : '';
+      $('#jobProgress').textContent = j.units_total > 1 ? `${j.units_done}/${j.units_total}` : '';
       $('#jobBar').style.width = j.progress + '%';
       $('#jobLog').textContent = (j.log || []).join('\n');
       $('#jobLog').scrollTop = 1e6;
@@ -526,7 +453,6 @@ async function runJob(kind, body, onDone) {
           $('#jobError').classList.remove('hidden');
         }
         await refresh();
-        if (j.state === 'done' && onDone) onDone(j.result);
         resolve(j);
       }
     }, 1500);
@@ -543,8 +469,8 @@ document.querySelectorAll('.jobbtn').forEach(b => b.onclick = async () => {
     if (!body.role) { alert('Describe the role you are targeting.'); return; }
   }
   try {
-    await runJob(kind, body);
-    if (kind === 'score') showTab('matches');
+    const j = await runJob(kind, body);
+    if (kind === 'score' && j.state === 'done') showTab('matches');
   } catch (e) { alert(e.message); }
 });
 
@@ -552,24 +478,34 @@ document.querySelectorAll('.jobbtn').forEach(b => b.onclick = async () => {
 let ME = null;
 async function refresh() {
   ME = await api('/api/me');
-  const m = ME;
-  $('#userEmail').textContent = m.email;
-  $('#spendText').textContent = '$' + m.spend.used.toFixed(4);
-  const pct = m.spend.limit ? Math.min(100, m.spend.used / m.spend.limit * 100) : 0;
-  $('#spendBar').style.width = pct + '%';
-  $('#spendBar').className = 'h-full ' + (pct > 80 ? 'bg-rose-500' : 'bg-emerald-500');
+  const m = ME, q = m.quota;
 
-  const next = await api('/api/next');
-  $('#nextActions').innerHTML = next.actions.length ? next.actions.map((a, i) => `
-    <div class="flex gap-2">
-      <span class="text-indigo-400 font-medium">${i + 1}.</span>
+  $('#planBadge').innerHTML = q.plan === 'pro'
+    ? '<span class="text-indigo-300">Pro</span>'
+    : '<span class="text-slate-400">Free</span>';
+  $('#runsText').textContent = `${q.runs_used} / ${q.runs_limit}`;
+  const pct = q.runs_limit ? Math.min(100, q.runs_used / q.runs_limit * 100) : 0;
+  $('#runsBar').style.width = pct + '%';
+  $('#runsBar').className = 'h-full ' + (pct > 85 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500');
+  if (m.avatar_url) { $('#avatar').src = m.avatar_url; $('#avatar').classList.remove('hidden'); }
+  $('#batchHint').textContent = `up to ${q.max_scores_per_batch} per batch on ${q.plan_name}`;
+  $('#scoreLimit').max = q.max_scores_per_batch;
+
+  if (!m.platform_ready) {
+    $('#nextActions').innerHTML =
+      '<div class="text-amber-400">The service is not fully configured yet. Agents cannot run.</div>';
+  } else {
+    const next = await api('/api/next');
+    $('#nextActions').innerHTML = next.actions.length ? next.actions.map((a, i) => `
+      <div class="flex gap-2"><span class="text-indigo-400 font-medium">${i + 1}.</span>
       <div><div class="text-slate-100">${esc(a.label)}</div>
-      <div class="text-xs text-slate-500">${esc(a.why)}</div></div>
-    </div>`).join('') : '<div class="text-slate-400">Nothing outstanding.</div>';
+      <div class="text-xs text-slate-500">${esc(a.why)}</div></div></div>`).join('')
+      : '<div class="text-slate-400">Nothing outstanding.</div>';
+  }
 
   $('#docList').innerHTML = m.documents.map(d => `
     <span class="px-2 py-1 rounded bg-slate-800 text-xs flex items-center gap-2">
-      ${esc(d.filename)} <span class="text-slate-600">${(d.chars/1000).toFixed(1)}k chars</span>
+      ${esc(d.filename)} <span class="text-slate-600">${(d.chars/1000).toFixed(1)}k</span>
       <button data-del="${esc(d.filename)}" class="text-slate-500 hover:text-rose-400 leading-none">&times;</button>
     </span>`).join('') || '<span class="text-xs text-slate-500">No documents yet</span>';
   $('#docList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
@@ -602,9 +538,7 @@ async function refresh() {
   const g = m.gap_report;
   $('#gapBox').innerHTML = !g ? '' : `
     <div class="rounded border border-slate-800 bg-slate-950/60 p-3">
-      <div class="text-sm">readiness
-        <b class="${g.readiness_pct >= 70 ? 'text-emerald-400' : g.readiness_pct >= 45 ? 'text-amber-400' : 'text-rose-400'}">${g.readiness_pct}%</b>
-      </div>
+      <div class="text-sm">readiness <b class="${g.readiness_pct >= 70 ? 'text-emerald-400' : g.readiness_pct >= 45 ? 'text-amber-400' : 'text-rose-400'}">${g.readiness_pct}%</b></div>
       <div class="text-sm text-slate-400 mt-1">${esc(g.verdict)}</div>
       ${(g.gaps || []).filter(x => x.severity === 'blocking').map(x => `
         <div class="mt-2"><span class="text-rose-400 text-xs uppercase">blocking</span>
@@ -612,13 +546,6 @@ async function refresh() {
         <div class="text-xs text-slate-500">${esc(x.fastest_proof)}</div></div>`).join('')}
     </div>`;
 
-  // settings
-  $('#keyStatus').innerHTML = m.key
-    ? `<span class="text-emerald-400">${esc(m.key.provider)} key saved (${esc(m.key.hint)})</span>
-       <span class="text-slate-500">· ${esc(m.key.model_cheap)} / ${esc(m.key.model_smart)}</span>`
-    : '<span class="text-amber-400">No key saved. Agents cannot run.</span>';
-  $('#limitInput').value = m.spend.limit;
-  if (m.key) { $('#provider').value = m.key.provider; }
   $('#adminTab').classList.toggle('hidden', !m.is_admin);
 }
 function dot(sel, done) {
@@ -635,12 +562,108 @@ $('#fileInput').onchange = async (e) => {
   e.target.value = ''; refresh();
 };
 
+/* ---------------- plan & usage ---------------- */
+async function loadPlan() {
+  const u = await api('/api/usage');
+  const q = u.quota;
+  const pct = q.runs_limit ? Math.round(q.runs_used / q.runs_limit * 100) : 0;
+
+  $('#quotaBox').innerHTML = `
+    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+      <div class="flex items-baseline gap-2">
+        <div class="text-xl font-medium text-white">${esc(q.plan_name)}</div>
+        ${q.price_inr ? `<div class="text-sm text-slate-400">₹${q.price_inr}/month</div>` : ''}
+      </div>
+      <div class="mt-3 text-sm text-slate-300">${q.runs_used} of ${q.runs_limit} agent runs used
+        <span class="text-slate-500">· ${q.runs_left} left · resets ${esc(q.resets_on)}</span></div>
+      <div class="mt-2 h-2 bg-slate-800 rounded overflow-hidden">
+        <div class="h-full ${pct > 85 ? 'bg-rose-500' : 'bg-emerald-500'}" style="width:${pct}%"></div></div>
+      <p class="text-xs text-slate-500 mt-3">
+        One run is one agent call. Discovery is free and never counts against this.
+      </p>
+    </div>`;
+
+  const cfg = await api('/api/config');
+  $('#upgradeBox').innerHTML = q.plan === 'pro' ? `
+    <div class="sm:col-span-2 rounded-lg border border-indigo-800 bg-indigo-950/20 p-4 text-sm">
+      <div class="text-white font-medium">You are on Pro</div>
+      <div class="text-slate-400 mt-1">All agents unlocked. Extend any time — added months
+      stack on top of what you already have rather than replacing it.</div>
+      <button id="btnBuy" class="mt-3 px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Add a month</button>
+    </div>` : cfg.plans.filter(p => p.key === 'pro').map(p => `
+    <div class="sm:col-span-2 rounded-lg border border-indigo-700 bg-indigo-950/20 p-5">
+      <div class="flex items-baseline gap-2">
+        <div class="text-lg font-medium text-white">Upgrade to Pro</div>
+        <div class="text-slate-400">₹${p.price_inr}/month</div></div>
+      <ul class="mt-3 space-y-1 text-sm text-slate-300">
+        ${p.features.map(f => `<li>· ${esc(f)}</li>`).join('')}</ul>
+      <button id="btnBuy" class="mt-4 px-4 py-2.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
+        Subscribe — ₹${p.price_inr}</button>
+      ${cfg.billing_configured ? '' :
+        '<div class="text-xs text-amber-400 mt-2">Payments are not configured on this deployment yet.</div>'}
+    </div>`).join('');
+
+  if ($('#btnBuy')) $('#btnBuy').onclick = startCheckout;
+
+  $('#usageBox').innerHTML = u.by_agent.length ? `<table class="w-full text-sm">
+    <thead class="text-xs text-slate-500 text-left"><tr><th class="py-1">agent</th>
+    <th class="text-right">runs</th><th class="text-right">in</th><th class="text-right">out</th></tr></thead>
+    <tbody>${u.by_agent.map(r => `<tr class="border-t border-slate-800">
+      <td class="py-1.5 text-slate-300">${esc(r.agent)}</td>
+      <td class="text-right">${r.runs}</td>
+      <td class="text-right text-slate-500">${(r.input_tokens||0).toLocaleString()}</td>
+      <td class="text-right text-slate-500">${(r.output_tokens||0).toLocaleString()}</td>
+    </tr>`).join('')}</tbody></table>`
+    : '<div class="text-sm text-slate-500">No agent runs yet.</div>';
+
+  const h = await api('/api/billing/history');
+  $('#paymentsBox').innerHTML = h.payments.length
+    ? h.payments.map(p => `<div class="border-t border-slate-800 py-1.5">
+        ₹${(p.amount_paise / 100).toFixed(0)} · ${esc(p.plan)} · ${p.months} month(s)
+        · <span class="text-slate-500">${esc(p.status)} · ${esc(String(p.created_at).slice(0, 16))}</span></div>`).join('')
+    : 'No payments yet.';
+}
+
+async function startCheckout() {
+  let order;
+  try { order = await post('/api/billing/checkout', { plan: 'pro', months: 1 }); }
+  catch (e) { alert(e.message); return; }
+
+  const rzp = new Razorpay({
+    key: order.key_id,
+    amount: order.amount_paise,
+    currency: order.currency,
+    name: 'CodeSkate',
+    description: 'Pro — 1 month',
+    order_id: order.order_id,
+    prefill: { email: ME?.email || '', name: ME?.display_name || '' },
+    theme: { color: '#4f46e5' },
+    handler: async (res) => {
+      try {
+        await post('/api/billing/confirm', { ...res, plan: order.plan, months: order.months });
+        alert('You are on Pro. All agents are unlocked.');
+        await refresh(); loadPlan();
+      } catch (e) {
+        // The webhook is the backstop, so a failure here is not lost money.
+        alert('Payment went through but confirming it failed: ' + e.message +
+              '\nIt will be applied automatically within a few minutes.');
+      }
+    },
+  });
+  rzp.open();
+}
+
 /* ---------------- matches ---------------- */
 async function loadMatches() {
   const { matches } = await api('/api/matches?limit=40&min_score=' + (+$('#minScore').value || 0));
+  const locked = new Set(ME?.quota?.blocked_agents || []);
+  const btn = (act, label, primary) => `<button data-act="${act}" class="act px-2.5 py-1.5 rounded text-xs
+    ${primary ? 'bg-indigo-600 hover:bg-indigo-500 text-white font-medium' : 'bg-slate-700 hover:bg-slate-600'}
+    ${locked.has(act) ? 'opacity-50' : ''}">${label}${locked.has(act) ? ' · Pro' : ''}</button>`;
+
   $('#matchList').innerHTML = matches.length ? matches.map(m => {
     const colour = m.score >= 70 ? 'text-emerald-400' : m.score >= 55 ? 'text-amber-400' : 'text-slate-500';
-    return `<div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4" data-id="${esc(m.id)}">
       <div class="flex items-start gap-3">
         <div class="text-2xl font-semibold ${colour} w-12 text-right">${m.score}</div>
         <div class="flex-1 min-w-0">
@@ -650,11 +673,8 @@ async function loadMatches() {
           <div class="text-sm text-slate-400 mt-2">${esc(m.reasoning)}</div>
           ${m.missing.length ? `<div class="text-xs text-rose-400/70 mt-1.5">missing: ${m.missing.slice(0,6).map(esc).join(', ')}</div>` : ''}
           <div class="mt-3 flex flex-wrap gap-2">
-            <button data-act="tailor" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">Tailor resume</button>
-            <button data-act="outreach" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Outreach</button>
-            <button data-act="prep" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Interview prep</button>
-            <button data-act="intel" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Company intel</button>
-            <button data-act="comp" data-id="${esc(m.id)}" class="act px-2.5 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs">Salary band</button>
+            ${btn('tailor', 'Tailor resume', true)}${btn('outreach', 'Outreach')}
+            ${btn('prep', 'Interview prep')}${btn('intel', 'Company intel')}${btn('comp', 'Salary band')}
             <a href="${esc(m.url)}" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded border border-slate-700 text-xs hover:bg-slate-800">Open posting</a>
           </div>
         </div></div></div>`;
@@ -662,13 +682,14 @@ async function loadMatches() {
 
   const RENDER = { tailor: renderResume, outreach: renderOutreach, prep: renderPrep,
                    intel: renderIntel, comp: renderComp };
-  const TITLE = { tailor: 'Tailored resume', outreach: 'Outreach pack',
-                  prep: 'Interview prep', intel: 'Company briefing', comp: 'Salary band' };
+  const TITLE = { tailor: 'Tailored resume', outreach: 'Outreach pack', prep: 'Interview prep',
+                  intel: 'Company briefing', comp: 'Salary band' };
   document.querySelectorAll('.act').forEach(b => b.onclick = async () => {
+    const id = b.closest('[data-id]').dataset.id;
     try {
-      const j = await runJob(b.dataset.act, { external_id: b.dataset.id });
+      const j = await runJob(b.dataset.act, { external_id: id });
       if (j.state === 'done') openDrawer(TITLE[b.dataset.act], RENDER[b.dataset.act](j.result));
-      loadMatches();
+      if (j.state !== 'blocked') loadMatches();
     } catch (e) { alert(e.message); }
   });
 }
@@ -764,41 +785,7 @@ async function loadPipeline() {
   });
 }
 
-/* ---------------- cost ---------------- */
-async function loadCost() {
-  const c = await api('/api/spend');
-  $('#costBox').innerHTML = `
-    <div class="text-2xl font-semibold text-white">$${c.total.toFixed(4)}
-      <span class="text-sm text-slate-500 font-normal">of $${c.limit.toFixed(2)} limit</span></div>
-    ${c.by_agent.length ? `<table class="mt-4 w-full text-sm"><thead class="text-xs text-slate-500">
-      <tr class="text-left"><th class="py-1">agent</th><th>model</th><th class="text-right">calls</th>
-      <th class="text-right">in</th><th class="text-right">out</th><th class="text-right">cost</th></tr></thead>
-      <tbody>${c.by_agent.map(r => `<tr class="border-t border-slate-800">
-        <td class="py-1.5 text-slate-300">${esc(r.agent)}</td><td class="text-slate-500">${esc(r.model)}</td>
-        <td class="text-right">${r.calls}</td><td class="text-right text-slate-500">${(r.tin||0).toLocaleString()}</td>
-        <td class="text-right text-slate-500">${(r.tout||0).toLocaleString()}</td>
-        <td class="text-right text-slate-200">$${(r.cost||0).toFixed(4)}</td></tr>`).join('')}</tbody></table>`
-      : '<div class="text-sm text-slate-500 mt-2">No API calls yet.</div>'}`;
-}
-
 /* ---------------- settings ---------------- */
-$('#btnSaveKey').onclick = async () => {
-  try {
-    await post('/api/settings/key', {
-      provider: $('#provider').value, api_key: $('#apiKey').value,
-      model_cheap: $('#modelCheap').value || null, model_smart: $('#modelSmart').value || null,
-    });
-    $('#apiKey').value = '';
-    refresh();
-  } catch (e) { alert(e.message); }
-};
-$('#btnDeleteKey').onclick = async () => {
-  if (!confirm('Remove your stored API key?')) return;
-  await api('/api/settings/key', { method: 'DELETE' }); refresh();
-};
-$('#btnSaveLimit').onclick = async () => {
-  await post('/api/settings/limit', { spend_limit_usd: +$('#limitInput').value }); refresh();
-};
 const lines = (el) => el.value.split('\n').map(s => s.trim()).filter(Boolean);
 $('#btnSaveTargets').onclick = async () => {
   await post('/api/settings/targets', { config: {
@@ -810,42 +797,6 @@ $('#btnSaveTargets').onclick = async () => {
   alert('Filters saved. They apply on your next scoring run.');
 };
 
-/* ---------------- drawer ---------------- */
-function openDrawer(title, html) {
-  $('#drawerTitle').textContent = title;
-  $('#drawerBody').innerHTML = html;
-  $('#drawer').classList.remove('hidden');
-}
-$('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
-
-/* ---------------- forgot / reset ---------------- */
-$('#btnForgot').onclick = async () => {
-  const email = $('#email').value.trim();
-  if (!email) { $('#email').focus(); return; }
-  const r = await post('/api/auth/forgot', { email });
-  $('#authError').classList.add('hidden');
-  $('#authNotice').textContent = r.detail + (r.mail_configured ? ''
-    : ' (No email provider is configured — the operator must read the link from the server log.)');
-  $('#authNotice').classList.remove('hidden');
-};
-
-$('#resetForm').onsubmit = async (e) => {
-  e.preventDefault();
-  const token = new URLSearchParams(location.search).get('token') || '';
-  try {
-    const r = await post('/api/auth/reset', { token, password: $('#newPassword').value });
-    history.replaceState({}, '', '/');
-    $('#resetView').classList.add('hidden');
-    showAuth();
-    $('#authNotice').textContent = r.detail;
-    $('#authNotice').classList.remove('hidden');
-  } catch (err) {
-    $('#resetError').textContent = err.message;
-    $('#resetError').classList.remove('hidden');
-  }
-};
-
-/* ---------------- target companies ---------------- */
 async function loadBoards() {
   const b = await api('/api/settings/companies');
   const c = b.companies || {};
@@ -858,7 +809,7 @@ async function loadBoards() {
   }).join('\n');
   $('#boardsStatus').innerHTML = b.is_custom
     ? '<span class="text-emerald-400">Using your own company list.</span>'
-    : '<span class="text-slate-400">Using the shipped default list. Edit and save to make it yours.</span>';
+    : '<span class="text-slate-400">Using the default list. Edit and save to make it yours.</span>';
 }
 $('#btnSaveBoards').onclick = async () => {
   const workday = lines($('#bWorkday')).map(row => {
@@ -867,12 +818,10 @@ $('#btnSaveBoards').onclick = async () => {
     return { tenant, wd, site, max: 40,
              search: (search || '').split(';').map(s => s.trim()).filter(Boolean) };
   }).filter(Boolean);
-  const companies = {
-    greenhouse: lines($('#bGreenhouse')), lever: lines($('#bLever')),
-    ashby: lines($('#bAshby')), workday,
-  };
   try {
-    const r = await post('/api/settings/companies', { companies });
+    const r = await post('/api/settings/companies', { companies: {
+      greenhouse: lines($('#bGreenhouse')), lever: lines($('#bLever')),
+      ashby: lines($('#bAshby')), workday } });
     alert(`Saved ${r.boards} board(s). Run "Find jobs" to pull from them.`);
     loadBoards();
   } catch (e) { alert(e.message); }
@@ -885,18 +834,28 @@ $('#btnResetBoards').onclick = async () => {
 /* ---------------- admin ---------------- */
 async function loadAdmin() {
   const o = await api('/api/admin/overview');
-  const card = (label, value, sub) => `
-    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+  const card = (label, value, sub, accent) => `
+    <div class="rounded-lg border ${accent ? 'border-emerald-900 bg-emerald-950/20' : 'border-slate-800 bg-slate-900/40'} p-4">
       <div class="text-2xl font-semibold text-white">${value}</div>
       <div class="text-xs text-slate-500 mt-0.5">${esc(label)}</div>
       ${sub ? `<div class="text-xs text-slate-600 mt-1">${esc(sub)}</div>` : ''}</div>`;
+
   $('#adminCards').innerHTML =
     card('total users', o.users.total, `${o.users.new_7d} new this week`) +
     card('active (24h)', o.users.active_24h, `${o.users.disabled} disabled`) +
     card('shared postings', o.shared.postings.toLocaleString(),
          `${o.shared.company_intel_cached} briefings cached`) +
-    card('LLM calls', o.usage.llm_calls.toLocaleString(),
-         `$${o.usage.spend_on_user_keys_usd} on users' own keys`);
+    card('agent runs', o.usage.llm_calls.toLocaleString(),
+         `$${o.usage.model_cost_usd} model cost — yours now`);
+
+  const rev = o.revenue;
+  $('#adminRevenue').innerHTML =
+    card('paying now', rev.paying_now, `${rev.conversion_pct}% of signups`, true) +
+    card('MRR', '₹' + rev.mrr_inr.toLocaleString(), 'subscribers × ₹999', true) +
+    card('collected', '₹' + rev.total_collected_inr.toLocaleString(), 'all time', true) +
+    card('gross margin', rev.mrr_inr
+      ? Math.round((1 - (o.usage.model_cost_usd * 88) / rev.mrr_inr) * 100) + '%'
+      : '—', 'revenue less model cost', true);
 
   $('#adminFunnel').innerHTML = o.funnel.map(f => `
     <div class="flex items-center gap-3 text-sm">
@@ -907,8 +866,7 @@ async function loadAdmin() {
     </div>`).join('');
 
   const q = Object.entries(o.queue).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'empty';
-  $('#adminErrors').innerHTML =
-    `<div class="text-xs text-slate-500 mb-2">queue — ${esc(q)}</div>` +
+  $('#adminErrors').innerHTML = `<div class="text-xs text-slate-500 mb-2">queue — ${esc(q)}</div>` +
     (o.recent_errors.length ? o.recent_errors.map(e => `
       <div class="rounded border border-rose-900/50 bg-rose-950/20 p-2">
         <span class="text-rose-300">${esc(e.kind)}</span>
@@ -919,18 +877,16 @@ async function loadAdmin() {
   const u = await api('/api/admin/users');
   $('#adminUsers').innerHTML = `<table class="w-full text-sm whitespace-nowrap">
     <thead class="text-xs text-slate-500 text-left"><tr>
-      <th class="py-1">email</th><th>key</th><th class="text-right">docs</th>
+      <th class="py-1">email</th><th>plan</th><th class="text-right">docs</th>
       <th class="text-center">profile</th><th class="text-right">scored</th>
-      <th class="text-right">pipeline</th><th class="text-right">spend</th>
+      <th class="text-right">pipeline</th><th class="text-right">cost</th>
       <th>last login</th><th></th></tr></thead>
     <tbody>${u.users.map(x => `<tr class="border-t border-slate-800 ${x.is_active ? '' : 'opacity-40'}">
       <td class="py-1.5 text-slate-300">${esc(x.email)}</td>
-      <td class="text-xs ${x.key_provider ? 'text-emerald-400' : 'text-slate-600'}">
-        ${x.key_provider ? esc(x.key_provider) + ' ' + esc(x.key_hint) : 'none'}</td>
+      <td class="text-xs ${x.plan === 'pro' ? 'text-indigo-300' : 'text-slate-500'}">${esc(x.plan)}</td>
       <td class="text-right">${x.documents}</td>
       <td class="text-center">${x.has_profile
-        ? '<span class="text-emerald-400">yes</span>'
-        : '<span class="text-slate-600">no</span>'}</td>
+        ? '<span class="text-emerald-400">yes</span>' : '<span class="text-slate-600">no</span>'}</td>
       <td class="text-right">${x.scored}</td>
       <td class="text-right">${x.pipeline}</td>
       <td class="text-right text-slate-400">$${x.spend_usd}</td>
@@ -952,22 +908,22 @@ async function loadAdmin() {
   });
 }
 
+/* ---------------- drawer ---------------- */
+function openDrawer(title, html) {
+  $('#drawerTitle').textContent = title;
+  $('#drawerBody').innerHTML = html;
+  $('#drawer').classList.remove('hidden');
+}
+$('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
+
 /* ---------------- boot ---------------- */
-async function boot() {
-  const token = new URLSearchParams(location.search).get('token');
-  if (location.pathname === '/reset' && token) {
-    $('#authView').classList.add('hidden');
-    $('#appView').classList.add('hidden');
-    $('#resetView').classList.remove('hidden');
-    return;
-  }
+(async function boot() {
   try {
     await refresh();
     showApp();
     showTab('home');
   } catch (e) { showAuth(); }
-}
-boot();
+})();
 </script>
 </body>
 </html>

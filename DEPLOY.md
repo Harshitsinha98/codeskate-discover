@@ -67,34 +67,72 @@ Settings → Environment Variables.
 | Variable | Required | Purpose |
 |---|---|---|
 `DATABASE_URL` | yes | Pooled Postgres URI |
-`APP_SECRET` | yes | Encrypts stored API keys. 32+ characters |
-`CRON_SECRET` | yes | Stops anyone from calling `/api/worker` and burning function time |
-`ADMIN_EMAILS` | yes | Comma-separated emails that get the owner dashboard. Unset means nobody is an admin |
-`PUBLIC_BASE_URL` | yes | e.g. `https://codeskate.vercel.app`. Used to build password-reset links |
-`RESEND_API_KEY` | strongly advised | Sends password-reset email. Without it, resets only reach the server log |
-`MAIL_FROM` | no | Defaults to Resend's shared sender. Use your own verified domain |
+`APP_SECRET` | yes | Signing secret. 32+ characters |
+`CRON_SECRET` | yes | Stops anyone calling `/api/worker` and burning function time |
+`PUBLIC_BASE_URL` | yes | e.g. `https://codeskate.vercel.app`. Used for the OAuth callback |
+`GOOGLE_CLIENT_ID` | yes | Google OAuth client |
+`GOOGLE_CLIENT_SECRET` | yes | Google OAuth client secret |
+`OPENAI_API_KEY` | yes | **The platform's own key.** Users do not supply one |
+`ADMIN_EMAILS` | yes | Comma-separated emails that get the owner dashboard |
+`RAZORPAY_KEY_ID` | for payments | From the Razorpay dashboard |
+`RAZORPAY_KEY_SECRET` | for payments | From the Razorpay dashboard |
+`RAZORPAY_WEBHOOK_SECRET` | for payments | Set when creating the webhook |
+`LLM_PROVIDER` | no | `openai` (default) or `anthropic` |
+`LLM_MODEL_CHEAP` / `LLM_MODEL_SMART` | no | Override the routed models |
+`GLOBAL_DAILY_RUN_CAP` | no | Circuit breaker across all accounts. Default 5000 |
+`PER_USER_HARD_USD_CEILING` | no | Backstop dollar guard per account. Default 25 |
 `SECURE_COOKIES` | no | Defaults to on. Set `0` only for local HTTP testing |
 `WORKER_BUDGET` | no | Seconds the cron worker runs. Keep below `maxDuration` |
-`INLINE_WORKER_BUDGET` | no | Seconds spent draining the queue inside a user request |
 
-### About ADMIN_EMAILS
+### Google sign-in setup
 
-Sign up with that address like any other user; the Admin tab then appears. The
-panel shows counts, the activation funnel, queue failures and per-user progress.
+In Google Cloud Console: create a project, then **APIs & Services → Credentials →
+Create OAuth client ID → Web application**. Add an authorised redirect URI of
+exactly `https://<your-domain>/api/auth/google/callback`. Copy the client ID and
+secret into the variables above.
 
-It deliberately cannot show users' documents, skill graphs, generated resumes, or
-decrypted API keys — only a provider name and the last four characters of a key.
-That boundary is enforced in `saas/admin.py` and covered by tests. Keep it: it
-limits what a compromised owner account can leak, and it makes the claim in the
-privacy policy true rather than aspirational.
+Google is the only sign-in method. That removed passwords, hashing, reset tokens
+and reset email from the system — a large amount of security-sensitive code that no
+longer has to be correct.
 
-### About email
+### The platform API key, and why quotas matter
 
-Password reset is the difference between an account being recoverable and a user
-being locked out forever. With no `RESEND_API_KEY`, the flow still works end to
-end but the link is printed to the function log, which means you have to fetch it
-manually for every user. [Resend](https://resend.com) has a free tier and takes a
-few minutes to set up — do it before inviting anyone other than yourself.
+Users do **not** bring their own key. Asking a job seeker to create an OpenAI
+account and paste a key is a wall most will not climb, and if they are paying the
+model provider directly there is little left to charge a subscription for.
+
+The consequence is that usage spends **your** money, so quotas are the cost
+control, not a nicety:
+
+- Free: 40 agent runs a month, and the expensive agents (tailoring, outreach,
+  interview prep, company intel, salary bands) are locked.
+- Pro (₹999/month): 800 runs, everything unlocked.
+- A run averages roughly $0.004, so Pro caps one account near $3.20/month.
+- `GLOBAL_DAILY_RUN_CAP` sits behind the per-user limits as a circuit breaker for
+  a bad deploy or many accounts misbehaving at once.
+
+Quotas are checked before a job is queued *and* again before each unit runs, so a
+long job cannot sail past the ceiling once started.
+
+### Razorpay setup
+
+Razorpay rather than Stripe because the users are in India: UPI and netbanking are
+what people actually pay with, and onboarding an Indian entity is far less
+friction.
+
+1. Create an account and complete KYC.
+2. Copy the key ID and secret from **Settings → API Keys**.
+3. Add a webhook pointing at `https://<your-domain>/api/billing/webhook`,
+   subscribed to `payment.captured`, and copy the webhook secret.
+
+This is **buy-a-month**, not auto-debit. Order verification is a single
+well-defined HMAC check that is hard to get wrong; Razorpay Subscriptions need
+mandate handling that is easy to get subtly wrong and cannot be verified without a
+live merchant account. Auto-renewal is the next step once real payments flow.
+
+Both the browser redirect and the webhook mark a payment good, and both are
+idempotent through a unique constraint on the payment id — a user closing the tab
+mid-redirect must not lose a month they paid for.
 
 ## 4. Know what the plan limits mean
 
