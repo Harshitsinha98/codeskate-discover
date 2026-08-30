@@ -1,0 +1,36 @@
+# Your network, maintained by you. Agent 10 (Referral) reads this.
+#
+# This file exists instead of LinkedIn scraping. Scraping their graph breaks
+# their terms, gets accounts restricted, and is not something you can build a
+# company on top of. Twenty accurate contacts you actually know will outperform
+# a scraped graph you cannot legally use.
+#
+# Fields:
+#   name          required
+#   company       where they work now — matched against the job's company
+#   role          their title, helps the agent pitch at the right level
+#   relationship  e.g. college senior, ex-colleague, met at a conference
+#   how_you_know  the specific shared context the message will reference
+#   strength      warm | lukewarm | cold  (drives how direct the ask is)
+#   can_intro_at  companies they don't work at but could introduce you to
+#
+# `codeskate refer <job-id>` finds direct contacts first, then introducers,
+# ordered warm -> cold.
+
+contacts:
+  - name: EXAMPLE — delete this entry
+    company: databricks
+    role: Senior Software Engineer, Platform
+    relationship: college senior
+    how_you_know: same hostel at NIT, we built the fest website together in 2022
+    strength: warm
+    can_intro_at:
+      - figma
+      - stripe
+
+  - name: EXAMPLE — a lukewarm contact
+    company: cloudflare
+    role: Engineering Manager
+    relationship: met at a meetup
+    how_you_know: spoke for 20 minutes about edge caching at JSConf India 2025
+    strength: lukewarm
