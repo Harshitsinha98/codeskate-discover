@@ -22,19 +22,55 @@ optional:
 
 ## 1. Create a Postgres database
 
-Any managed Postgres works. Neon and Supabase both have a free tier and both
-provide a **pooled** connection string — use that one. Serverless functions open
-and discard connections constantly, and an unpooled endpoint will exhaust a small
-instance's connection limit.
-
-Copy the connection URI. It should look like:
-
-```
-postgresql://user:password@host/dbname?sslmode=require
-```
+Any managed Postgres works — the code is plain SQLAlchemy Core and has no opinion
+about the host. **Use the pooled connection string**, whichever provider you pick:
+serverless functions are created and discarded constantly, and each one opening a
+direct connection will exhaust a small instance's connection limit.
 
 Tables are created automatically on the first request; there is no migration step
-to run for the initial deploy.
+for the initial deploy.
+
+### Neon or Supabase
+
+Both are fine. The differences that actually matter here:
+
+| | Neon | Supabase |
+|---|---|---|
+Idle behaviour | Scales to zero after ~5 min, **wakes automatically** in well under a second | Free projects **pause after 7 days idle** and stay down until restored by hand from the dashboard |
+Also includes | Postgres (auth/storage newer, in beta) | Auth, Storage, Realtime, Edge Functions |
+Free tier | 0.5 GB | 500 MB, 2 active projects |
+
+The pause behaviour sounds like a problem for Supabase and mostly is not, because
+`vercel.json` already runs the queue worker hourly — that traffic keeps the project
+from ever reaching seven idle days. Worth knowing rather than worrying about, but
+if the cron is ever removed, Supabase will pause and need a manual restore.
+
+**Supabase:** Connect → *Transaction pooler*, port **6543**. The username looks
+like `postgres.<project-ref>`.
+
+**Neon:** copy the pooled connection string from the dashboard.
+
+### One gotcha, already handled in the code
+
+Transaction-mode poolers — Supabase's Supavisor on 6543, PgBouncer in transaction
+mode — do not support server-side prepared statements, and psycopg3 starts using
+them automatically after the fifth execution of a query. This app runs the same
+session lookup on every request, so that threshold is crossed within seconds and
+the failures would appear only once traffic arrived.
+
+`saas/engine.py` therefore passes `prepare_threshold=None` unconditionally. Nothing
+to configure — but do not remove it, and if you swap the data layer for an ORM of
+your own, check how that ORM handles prepared statements first.
+
+### Supabase Auth — not used, deliberately
+
+Supabase ships an auth product that also does Google sign-in. This project does not
+use it. The Google OAuth flow here is about a hundred lines, is tested, and keeps
+sign-in portable across database providers. Swapping in Supabase Auth would replace
+working, covered code with a vendor dependency for no functional gain.
+
+That calculation changes if magic links, phone sign-in or a social provider matrix
+are ever wanted — at that point Supabase Auth earns its lock-in.
 
 ## 2. Generate the secrets
 

@@ -1,12 +1,21 @@
 """Database engine and a dialect-neutral upsert.
 
 DATABASE_URL selects the backend. Postgres in production; SQLite is supported so
-the suite can run without a server, and so `vercel dev` works offline.
+the suite can run without a server, and so local runs work offline.
 
-Connection pooling matters more than usual here. Serverless functions come and go,
-and a pool that holds connections open across cold starts will exhaust a small
-Postgres instance. Neon and Supabase both offer a pooled endpoint (pgbouncer);
-use it, and keep the local pool tiny.
+Works with any managed Postgres — Neon, Supabase, RDS. The code is plain
+SQLAlchemy Core and has no opinion about the host.
+
+Two things matter and both are easy to get wrong:
+
+* **Use the pooled endpoint.** Serverless functions are created and discarded
+  constantly, and each one opening a direct connection will exhaust a small
+  instance's connection limit. Neon and Supabase both publish a pooled URL.
+
+* **Turn off server-side prepared statements.** Transaction-mode poolers
+  (Supabase's Supavisor on port 6543, PgBouncer in transaction mode) do not
+  support them, and psycopg3 enables them automatically after a few executions.
+  See the connect_args below.
 """
 
 from __future__ import annotations
@@ -55,6 +64,19 @@ def get_engine() -> Engine:
             max_overflow=2,
             pool_pre_ping=True,   # a pooled connection may have been closed under us
             pool_recycle=280,
+            connect_args={
+                # Server-side prepared statements must be off behind a
+                # transaction-mode pooler. Supabase's Supavisor on port 6543 and
+                # PgBouncer in transaction mode both reject them, while psycopg3
+                # starts using them automatically after the fifth execution of a
+                # query. Since this app runs the same session lookup on every
+                # request, that threshold is crossed within seconds and the
+                # errors appear only under load — the worst way to find out.
+                #
+                # Set unconditionally rather than by sniffing the port: a direct
+                # connection loses a small optimisation, a pooled one breaks.
+                "prepare_threshold": None,
+            },
         )
     return _engine
 
