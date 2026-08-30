@@ -259,3 +259,48 @@ def dedupe(jobs: Iterable[dict]) -> list[dict]:
         seen.add(j["external_id"])
         out.append(j)
     return out
+
+
+# Cities and markers that identify an Indian posting. Kept broad on purpose:
+# a company writes locations many ways ("Bengaluru", "Bangalore, KA", "IN").
+INDIA_MARKERS = (
+    "india", " in ", "bengaluru", "bangalore", "hyderabad", "pune", "chennai",
+    "mumbai", "gurgaon", "gurugram", "noida", "delhi", "kolkata", "ahmedabad",
+    "coimbatore", "kochi", "cochin", "trivandrum", "thiruvananthapuram", "mohali",
+    "chandigarh", "jaipur", "indore", "nagpur", "vadodara", "visakhapatnam",
+    "karnataka", "telangana", "maharashtra", "tamil nadu", "haryana",
+)
+
+# Places that look Indian by substring but are not, so they are not misread.
+_NON_INDIA_TRAP = ("indiana", "indianapolis")
+
+
+def is_india(job: dict) -> bool:
+    """True if the posting is in India, or is remote with no non-India region.
+
+    Location strings are inconsistent across boards, so this matches broadly on
+    Indian cities, states and country markers. A remote role with no region named
+    is kept — it is open to India — while "Remote, US" is dropped.
+    """
+    loc = (job.get("location") or "").lower()
+    title = (job.get("title") or "").lower()
+
+    for trap in _NON_INDIA_TRAP:
+        loc = loc.replace(trap, "")
+
+    if any(m in loc for m in INDIA_MARKERS):
+        return True
+
+    # A purely remote posting with no country attached is open to India.
+    if not loc.strip() or "remote" in loc or "remote" in title:
+        non_india = ("usa", "united states", " us ", "u.s", "canada", "emea",
+                     "europe", "uk", "united kingdom", "singapore", "australia",
+                     "germany", "poland", "brazil", "philippines", "japan", "china")
+        if not any(r in loc for r in non_india):
+            return True
+
+    return False
+
+
+def india_only(jobs: Iterable[dict]) -> list[dict]:
+    return [j for j in jobs if is_india(j)]

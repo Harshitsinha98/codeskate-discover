@@ -331,6 +331,9 @@ def discover() -> None:
 
     jobs, errors = discovery.fetch_all(config, on_board=on_board)
     jobs = discovery.dedupe(jobs)
+    before_india = len(jobs)
+    jobs = discovery.india_only(jobs)
+    console.print(f"  [dim]India filter: {before_india} -> {len(jobs)} kept[/dim]")
 
     new = db.upsert_jobs(conn, jobs) if jobs else 0
     total = conn.execute("SELECT COUNT(*) AS c FROM jobs").fetchone()["c"]

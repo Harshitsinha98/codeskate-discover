@@ -151,6 +151,9 @@ def discover_handler(user_id: int, payload: dict, index: int) -> dict:
 
     postings, errors = discovery.fetch_all({ats: [entry]})
     postings = discovery.dedupe(postings)
+    # India-only: even a global company's board should contribute only its India
+    # roles, so a user here never scores a posting they could not take.
+    postings = discovery.india_only(postings)
     new = store.upsert_postings(postings)
 
     line = f"{ats}/{label}: {len(postings)} postings, {new} new"

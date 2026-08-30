@@ -1,32 +1,37 @@
-# Job feed — tuned for India.
+# India-only job feed.
 #
-# Two groups, both verified live on 2026-08-30:
-#   greenhouse/lever/ashby : Indian product companies and startups
-#   workday                : MNCs with large India offices, searched for India roles
+# Two things keep this India-only:
+#   1. The companies below either are Indian, or run large India offices.
+#   2. discovery.india_only() drops any posting that is not in India, so even a
+#      global company on this list contributes only its India roles. A user here
+#      never scores a job they could not take.
 #
-# The Workday section matters most for a support/operations/SRE profile: MNC India
-# offices hire heavily for exactly those roles, and they publish on Workday. The
-# search terms are set to India + support/operations so the two-call-per-posting
-# cost stays bounded.
-#
-# To add a company: open its careers page and read the URL.
+# All slugs verified live on 2026-08-30. Add more the same way — open a careers
+# page and read the slug out of the URL:
 #   job-boards.greenhouse.io/SLUG   -> greenhouse
 #   jobs.lever.co/SLUG              -> lever
 #   jobs.ashbyhq.com/SLUG           -> ashby
 
 greenhouse:
-  - postman
-  - groww
+  - postman          # dev tools, Bengaluru/Hyderabad
+  - groww            # fintech, Bengaluru
+  - observeai        # SaaS, Bengaluru
+  - druva            # SaaS, Pune
+  - mongodb          # India offices — india_only trims the rest
+  - databricks       # India offices — india_only trims the rest
+  - scaleai          # India roles — india_only trims the rest
 
 lever:
-  - meesho
-  - cred
+  - meesho           # e-commerce, Bengaluru
+  - cred             # fintech, Bengaluru
 
 ashby:
-  - atlan
-  - incident
+  - atlan            # data, Bengaluru/Delhi
+  - incident         # incident.io — India + remote
+  - navi             # fintech, Bengaluru
 
-# MNC India offices — where a service-desk / support / ops / SRE profile fits best.
+# MNC India offices — the strongest fit for a support / operations / SRE profile,
+# searched for India roles specifically so the two-call cost stays bounded.
 workday:
   - tenant: nvidia
     wd: wd5
@@ -52,11 +57,6 @@ workday:
     wd: wd1
     site: External
     search: ["IT support India", "systems engineer India", "operations India"]
-    max: 40
-  - tenant: thomsonreuters
-    wd: wd5
-    site: External_Career_Site
-    search: ["technical support India", "cloud operations India"]
     max: 40
   - tenant: hitachi
     wd: wd1
