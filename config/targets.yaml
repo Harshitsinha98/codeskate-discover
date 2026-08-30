@@ -1,50 +1,78 @@
-# EDIT THIS FIRST — it drives the free prefilter and the LLM's constraints.
-# Getting this right costs nothing and saves most of your API budget.
+# Tuned for: service desk incident management -> cloud support / associate SRE,
+# India, ~3.8 years experience. Applied for free before any model runs, so this
+# file is the cheapest lever on result quality.
 
-# A job title must contain at least one of these (case-insensitive substring).
+# A title must contain at least one of these.
 title_include:
-  - software engineer
-  - backend
-  - back end
-  - full stack
-  - fullstack
+  - technical support engineer
+  - support engineer
+  - cloud support
+  - cloud operations
+  - cloud engineer
+  - production support
+  - application support
+  - site reliability
+  - sre
+  - infrastructure engineer
+  - infrastructure support
+  - platform support
   - platform engineer
-  - developer
+  - operations engineer
+  - noc
+  - network operations
+  - systems engineer
+  - incident
 
-# ...and none of these. Add aggressively — every exclusion is free savings.
+# ...and none of these.
 #
-# `senior` and `lead` are excluded because the profile below is 3 YOE. A live
-# scoring run against real postings confirmed why: five "Senior Software
-# Engineer" roles all scored 5-35/100, every one rejected for the same reason
-# (they wanted 6-8+ years). Those were five LLM calls spent to learn something
-# a free string match already knew. If you are genuinely senior, delete these
-# two lines.
+# The first group is the whole point of the move: staying in service desk,
+# helpdesk or desktop support is the outcome to avoid, so those titles are
+# excluded even though they would match strongly. A high fit score for a job you
+# are trying to escape is a false positive.
+#
+# The second group is seniority. At 3.8 years, senior and lead roles want 6-8+
+# and reject on that alone — five such postings were scored in an earlier run and
+# every one came back weak for exactly that reason. Free string matching already
+# knew. Note that postings abbreviate: `senior` alone misses "Sr." and "Sr".
 title_exclude:
-  - intern
+  - service desk
+  - servicedesk
+  - help desk
+  - helpdesk
+  - desktop support
+  - deskside
+  - field
   - senior
-  - " sr "          # postings abbreviate: "Sr Software Engineer", "Sr. Backend Dev"
+  - " sr "
   - lead
-  - director
-  - vice president
   - principal
   - staff
+  - director
+  - vice president
   - manager
+  - head of
+  - intern
   - sales
   - recruiter
   - marketing
-  - support
+  - account executive
 
-# Empty list = accept any location.
 locations:
   - bangalore
   - bengaluru
   - hyderabad
   - pune
+  - chennai
+  - mumbai
+  - gurgaon
+  - gurugram
+  - noida
+  - delhi
   - india
 remote_ok: true
 
-# "Remote" is usually region-locked. A posting saying "Remote, USA" is useless
-# if you can't work in the USA, so drop remote roles pinned to these regions.
+# "Remote" alone is global; "Remote - Poland" is not. Anything naming a place has
+# to name one of the locations above.
 remote_exclude_regions:
   - usa
   - united states
@@ -56,15 +84,34 @@ remote_exclude_regions:
   - latam
   - brazil
   - australia
+  - singapore
+  - japan
+  - poland
+  - estonia
+  - philippines
 
-# Postings shorter than this are usually stubs — not worth an LLM call.
 min_description_chars: 300
 
 # Passed to the scoring model as hard constraints.
+#
+# On salary: the current figure is INR 4 LPA. An earlier gap analysis against an
+# 18 LPA floor came back with "you will compete with candidates who already have
+# demonstrable AWS/Azure operations" — true, and a reason to set a reachable
+# floor rather than an aspirational one. 9 LPA is still a large step up from 4,
+# and it keeps a much wider set of roles in play. Raise it once Linux and cloud
+# evidence exists.
 constraints:
-  years_of_experience: 2
-  work_authorisation: "India (no sponsorship needed); no US/EU work permit"
-  minimum_salary_inr_lpa: 18
-  notice_period: "30 days"
+  years_of_experience: 3.8
+  current_role: "Service Desk Incident Manager / Shift Lead (moving out of service desk)"
+  work_authorisation: "Indian citizen, no sponsorship required, no US/EU work permit"
+  minimum_salary_inr_lpa: 9
+  notice_period: "TODO — confirm your actual notice period at Capgemini"
   open_to_relocation: true
   employment_type: "full-time"
+  transferable_strengths: >
+    2.4 years owning P1/P2 incidents on a ~150 ticket/day queue, escalation point
+    for a ~20 agent shift, SLA held above 95%, plus 1.1 years of telecom network
+    operations. Incident response and SLA ownership are the core of SRE work.
+  known_gaps: >
+    No verified hands-on Linux, cloud (AWS/Azure), scripting, or observability
+    tooling experience. These are the blocking gaps to close.
