@@ -307,14 +307,37 @@ def gaps(
 @app.command()
 def discover() -> None:
     """Agent 4 — pull live postings from public ATS boards. Free."""
+    import time as _time
+
     conn = db.connect()
-    console.print("[bold]Agent 4 — Job Discovery[/bold]")
-    jobs, errors = discovery.fetch_all()
+    config = discovery.load_company_config()
+    total_boards = sum(len(v) for v in config.values())
+    console.print(
+        f"[bold]Agent 4 — Job Discovery[/bold]  {total_boards} boards "
+        f"[dim](Workday boards are slower — one extra request per posting)[/dim]\n"
+    )
+
+    done = 0
+    started = _time.monotonic()
+
+    def on_board(ats: str, label: str, count: int, seconds: float) -> None:
+        nonlocal done
+        done += 1
+        status = f"[green]{count:>4}[/green]" if count else "[red]   0[/red]"
+        console.print(
+            f"  [{done:>2}/{total_boards}] {ats:<11} {label:<22} {status} jobs  "
+            f"[dim]{seconds:5.1f}s[/dim]"
+        )
+
+    jobs, errors = discovery.fetch_all(config, on_board=on_board)
     jobs = discovery.dedupe(jobs)
 
     new = db.upsert_jobs(conn, jobs) if jobs else 0
     total = conn.execute("SELECT COUNT(*) AS c FROM jobs").fetchone()["c"]
-    console.print(f"\n  fetched {len(jobs)}, {new} new, {total} in db  [dim](cost: $0)[/dim]")
+    console.print(
+        f"\n  fetched {len(jobs)}, {new} new, {total} in db  "
+        f"[dim](cost: $0, took {_time.monotonic() - started:.0f}s)[/dim]"
+    )
 
     if errors:
         console.print(f"\n[yellow]{len(errors)} board(s) unreachable — fix or remove the slug:[/yellow]")

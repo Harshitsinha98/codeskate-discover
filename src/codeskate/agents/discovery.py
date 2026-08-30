@@ -16,8 +16,10 @@ them, so without it the feed skews heavily towards US-based startup roles.
 from __future__ import annotations
 
 import re
+import threading
 import time
-from typing import Iterable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Iterable
 
 import httpx
 import yaml
@@ -26,6 +28,13 @@ from ..settings import CONFIG_DIR
 
 TIMEOUT = httpx.Timeout(30.0)
 TAG_RE = re.compile(r"<[^>]+>")
+
+# Two levels of concurrency, both deliberately modest. These hit other people's
+# free endpoints, so the aim is "fast enough" rather than maximum throughput.
+# Worst case in flight is BOARD_CONCURRENCY * WORKDAY_CONCURRENCY requests, and
+# each board's requests go to a different host.
+BOARD_CONCURRENCY = 6
+WORKDAY_CONCURRENCY = 6
 
 
 def _clean(html: str | None, limit: int = 6000) -> str:
@@ -133,21 +142,28 @@ def _workday(client: httpx.Client, spec: dict) -> list[dict]:
             collected += len(page)
             offset += 20
 
-    out = []
-    for p in postings:
+    # Detail requests run concurrently. Sequentially, with a courtesy sleep between
+    # each, ~460 postings took several minutes and looked like a hang. A small
+    # worker pool keeps the same politeness (a handful of in-flight requests, not a
+    # flood) while cutting wall time by roughly an order of magnitude.
+    def fetch_detail(p: dict) -> dict | None:
         path = p.get("externalPath")
         if not path:
-            continue
+            return None
         job_id = (p.get("bulletFields") or [path.rsplit("_", 1)[-1]])[0]
-        try:
-            d = client.get(f"{base}{path}", headers={"Accept": "application/json"})
-            d.raise_for_status()
-            info = d.json().get("jobPostingInfo", {})
-        except Exception:  # noqa: BLE001 - skip one bad posting, keep the rest
-            continue
 
-        out.append(
-            {
+        for attempt in range(3):
+            try:
+                d = client.get(f"{base}{path}", headers={"Accept": "application/json"})
+                if d.status_code == 429:
+                    time.sleep(1.5 * (attempt + 1))  # backoff and retry
+                    continue
+                d.raise_for_status()
+                info = d.json().get("jobPostingInfo", {})
+            except Exception:  # noqa: BLE001 - one bad posting must not kill the board
+                return None
+
+            return {
                 "external_id": f"wd:{tenant}:{job_id}",
                 "source": "workday",
                 "company": tenant,
@@ -156,8 +172,13 @@ def _workday(client: httpx.Client, spec: dict) -> list[dict]:
                 "url": info.get("externalUrl", ""),
                 "description": _clean(info.get("jobDescription")),
             }
-        )
-        time.sleep(0.15)  # be a polite client; these are free endpoints
+        return None
+
+    out: list[dict] = []
+    with ThreadPoolExecutor(max_workers=WORKDAY_CONCURRENCY) as pool:
+        for result in pool.map(fetch_detail, postings):
+            if result:
+                out.append(result)
 
     return out
 
@@ -174,25 +195,57 @@ def load_company_config() -> dict[str, list]:
     return {k: list(v or []) for k, v in data.items() if k in ALL_SOURCES}
 
 
-def fetch_all(config: dict[str, list] | None = None) -> tuple[list[dict], list[str]]:
-    """Return (jobs, errors). One dead board never aborts the run."""
+def fetch_all(
+    config: dict[str, list] | None = None,
+    on_board: Callable[[str, str, int, float], None] | None = None,
+) -> tuple[list[dict], list[str]]:
+    """Return (jobs, errors). One dead board never aborts the run.
+
+    `on_board(ats, label, count, seconds)` is called after each board so a caller
+    can render live progress. The default printer flushes explicitly: stdout is
+    block-buffered when piped, so without it a multi-minute run shows nothing at
+    all until it finishes and looks like a hang.
+    """
     config = config or load_company_config()
     jobs: list[dict] = []
     errors: list[str] = []
 
+    lock = threading.Lock()
+
+    def report(ats: str, label: str, count: int, seconds: float) -> None:
+        if on_board:
+            on_board(ats, label, count, seconds)
+        else:
+            print(f"  {ats:<11} {label:<24} {count:>4} jobs  {seconds:5.1f}s", flush=True)
+
+    boards = [(ats, entry) for ats, entries in config.items() for entry in entries]
+
+    def fetch_board(item: tuple[str, object]) -> list[dict]:
+        ats, entry = item
+        label = entry["tenant"] if isinstance(entry, dict) else entry
+        started = time.monotonic()
+        try:
+            if ats == "workday":
+                found = _workday(client, entry)
+            else:
+                found = SLUG_FETCHERS[ats](client, entry)
+        except Exception as e:  # noqa: BLE001
+            with lock:
+                errors.append(f"{ats}/{label}: {type(e).__name__}")
+            report(ats, label, 0, time.monotonic() - started)
+            return []
+        report(ats, label, len(found), time.monotonic() - started)
+        return found
+
+    # Boards are fetched concurrently as well as postings within a board. Workday's
+    # list endpoint is slow per call regardless of result size — one board returning
+    # six postings still took ~18s — so the wall time was dominated by waiting on
+    # other people's servers in sequence rather than by any work of ours. Running
+    # boards in parallel makes total time track the slowest board instead of the sum.
     with httpx.Client(timeout=TIMEOUT, follow_redirects=True) as client:
-        for ats, entries in config.items():
-            for entry in entries:
-                label = entry["tenant"] if isinstance(entry, dict) else entry
-                try:
-                    if ats == "workday":
-                        found = _workday(client, entry)
-                    else:
-                        found = SLUG_FETCHERS[ats](client, entry)
-                    jobs.extend(found)
-                    print(f"  {ats:<11} {label:<24} {len(found):>4} jobs")
-                except Exception as e:  # noqa: BLE001
-                    errors.append(f"{ats}/{label}: {type(e).__name__}")
+        with ThreadPoolExecutor(max_workers=BOARD_CONCURRENCY) as pool:
+            for found in pool.map(fetch_board, boards):
+                jobs.extend(found)
 
     return jobs, errors
 
