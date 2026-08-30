@@ -31,9 +31,41 @@ The last command matters most: it names the process holding 80 and 443. That is 
 proxy you will be adding a virtual host to.
 
 Rough budget on a 1 GB box: the OS takes ~250 MB, CodeSkate peaks at ~71 MB, and a
-proxy is ~30 MB. So there is room for a CRM using up to roughly 400 MB. A statically
-served Flutter web build is tiny; a CRM with its own database on the same box is not,
-and in that case take the second instance.
+proxy is ~30 MB. So there is room for another app using up to roughly 400 MB. A
+statically served frontend is tiny; an app with its own database on the same box is
+not, and in that case take the second instance.
+
+### Worked example: sharing with SNS-ADS-ERP
+
+Measured rather than estimated, since this is the case that prompted the guide.
+
+That project's Oracle instance runs only `whatsapp-backend` — a Node/Express service
+on **port 3001**. Its frontend is a Vite SPA built to static files and served
+elsewhere, and its database is Firestore, so neither consumes instance memory. Node
+module load was measured at 89 MB, mostly `firebase-admin`, giving roughly **114 MB**
+steady state once request headroom is included.
+
+| | Memory |
+|---|---|
+Ubuntu | ~250 MB |
+Reverse proxy + TLS | ~30 MB |
+whatsapp-backend | ~114 MB *(measured)* |
+CodeSkate | ~71 MB *(measured)* |
+| **Total** | **~465 MB** |
+| **Free on 1 GB** | **~535 MB** |
+
+It fits with room to spare, and **port 3001 does not collide with 8000**, so no
+remapping is needed.
+
+Two cautions specific to this shape:
+
+* **Build with the other service in mind.** `docker compose up --build` installing
+  Python packages alongside a live Node process is the peak moment for memory on a
+  1 GB box. The 2 GB of swap the setup script creates is what makes this safe —
+  confirm it exists with `swapon --show` before building.
+* **A minute-interval cron is already keeping the instance warm.** `node-cron`
+  runs every minute there, so Oracle's idle reclamation of Always Free compute is
+  not a concern.
 
 ## Option A — second instance (recommended)
 
