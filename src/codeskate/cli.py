@@ -331,13 +331,16 @@ def score(limit: int = typer.Option(40, help="Max jobs to send to the LLM")) -> 
     brief_text = skill_graph.profile_brief(graph)
     constraints = fit_scoring.constraints_text(targets)
 
-    candidates = db.unscored_jobs(conn, limit=5000)
+    # Scan every unscored posting: prefiltering is free, and capping before the
+    # filter silently hides jobs.
+    candidates = db.unscored_candidates(conn)
     console.print(f"[bold]Agent 5 — Fit Scoring[/bold]\n  {len(candidates)} unscored jobs")
 
     kept = fit_scoring.prefilter(candidates, targets)
     console.print(f"  prefilter (free): kept {len(kept)}, dropped {len(candidates) - len(kept)}")
 
-    kept = kept[:limit]
+    # Fetch full descriptions only for the postings that survived.
+    kept = db.jobs_by_ids(conn, [row["external_id"] for row in kept[:limit]])
     if not kept:
         console.print("\n[yellow]Nothing survived the prefilter. Loosen config/targets.yaml.[/yellow]")
         return

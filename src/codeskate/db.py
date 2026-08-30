@@ -225,6 +225,37 @@ def unscored_jobs(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
     ).fetchall()
 
 
+def unscored_candidates(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every unscored posting, without the description body.
+
+    The prefilter must see *all* unscored postings, because it is free and a cap
+    applied before filtering silently hides jobs. An earlier version fetched the
+    first 5,000 rows and then filtered, so 31 relevant postings that happened to
+    sit past that offset were invisible — the run reported "nothing survived".
+
+    Descriptions are excluded because they dominate row size; only their length
+    matters at this stage. Full rows are fetched for survivors only.
+    """
+    return conn.execute(
+        """SELECT j.external_id, j.source, j.company, j.title, j.location, j.url,
+                  LENGTH(COALESCE(j.description, '')) AS desc_len
+           FROM jobs j
+           LEFT JOIN fit_scores f ON f.external_id = j.external_id
+           WHERE f.external_id IS NULL"""
+    ).fetchall()
+
+
+def jobs_by_ids(conn: sqlite3.Connection, ids: list[str]) -> list[sqlite3.Row]:
+    if not ids:
+        return []
+    placeholders = ",".join("?" for _ in ids)
+    rows = conn.execute(
+        f"SELECT * FROM jobs WHERE external_id IN ({placeholders})", ids
+    ).fetchall()
+    order = {external_id: i for i, external_id in enumerate(ids)}
+    return sorted(rows, key=lambda r: order[r["external_id"]])
+
+
 def top_matches(conn: sqlite3.Connection, limit: int = 20, min_score: int = 0) -> list[sqlite3.Row]:
     return conn.execute(
         """SELECT j.external_id, j.company, j.title, j.location, j.url,

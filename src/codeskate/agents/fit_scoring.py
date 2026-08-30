@@ -48,6 +48,21 @@ def load_targets() -> dict[str, Any]:
     return yaml.safe_load(path.read_text()) or {}
 
 
+def _desc_len(job: Any) -> int:
+    """Description length, whether the row carries the body or just its length.
+
+    Callers pass lightweight rows (external_id, title, location, desc_len) when
+    scanning every unscored posting, and full rows when scoring. Both work.
+    """
+    try:
+        value = job["desc_len"]
+    except (KeyError, IndexError, TypeError):
+        value = None
+    if value is not None:
+        return int(value)
+    return len(job["description"] or "")
+
+
 def _norm(s: str | None) -> str:
     """Lowercase, strip punctuation, and pad with spaces.
 
@@ -74,7 +89,7 @@ def prefilter(jobs: list[sqlite3.Row], targets: dict[str, Any]) -> list[sqlite3.
             continue
         if any(k in title for k in exclude):
             continue
-        if len(job["description"] or "") < min_desc:
+        if _desc_len(job) < min_desc:
             continue
 
         if locations:

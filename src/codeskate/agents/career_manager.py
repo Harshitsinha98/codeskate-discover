@@ -41,7 +41,11 @@ def next_actions(conn: sqlite3.Connection, limit: int = 8) -> list[Action]:
 
     profile = db.load_profile(conn)
     job_count = conn.execute("SELECT COUNT(*) AS c FROM jobs").fetchone()["c"]
-    unscored = len(db.unscored_jobs(conn, 5000))
+    unscored = conn.execute(
+        """SELECT COUNT(*) AS c FROM jobs j
+           LEFT JOIN fit_scores f ON f.external_id = j.external_id
+           WHERE f.external_id IS NULL"""
+    ).fetchone()["c"]
     counts = db.stage_counts(conn)
 
     # --- setup gates ---------------------------------------------------------
