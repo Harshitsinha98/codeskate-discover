@@ -182,14 +182,17 @@ are ever wanted — at that point Supabase Auth earns its lock-in.
 ## 2. Generate the secrets
 
 ```bash
-python -c "import secrets; print('APP_SECRET =', secrets.token_urlsafe(48))"
 python -c "import secrets; print('CRON_SECRET =', secrets.token_urlsafe(32))"
 ```
 
-`APP_SECRET` encrypts users' stored API keys. It is the only thing between a
-database dump and usable credentials, so it belongs in the platform's environment
-variables and nowhere else. Changing it invalidates every stored key — which is
-the correct behaviour if it ever leaks, but means users must re-enter theirs.
+`CRON_SECRET` is only needed on the serverless path, where an external scheduler
+calls `/api/worker`. A persistent deployment runs the worker in-process and does
+not use it.
+
+There is deliberately no application signing secret. Sessions are random tokens
+stored only as SHA-256 hashes, so nothing needs signing, and users no longer supply
+API keys, so nothing needs encrypting. A required-but-unused secret is worse than
+none: it implies protection that does not exist.
 
 ## 3. Deploy
 
@@ -197,7 +200,6 @@ the correct behaviour if it ever leaks, but means users must re-enter theirs.
 npm i -g vercel
 vercel link
 vercel env add DATABASE_URL production
-vercel env add APP_SECRET production
 vercel env add CRON_SECRET production
 vercel --prod
 ```
@@ -210,7 +212,6 @@ Settings → Environment Variables.
 | Variable | Required | Purpose |
 |---|---|---|
 `DATABASE_URL` | yes | Pooled Postgres URI |
-`APP_SECRET` | yes | Signing secret. 32+ characters |
 `CRON_SECRET` | yes | Stops anyone calling `/api/worker` and burning function time |
 `PUBLIC_BASE_URL` | yes | e.g. `https://codeskate.vercel.app`. Used for the OAuth callback |
 `GOOGLE_CLIENT_ID` | yes | Google OAuth client |
@@ -315,7 +316,6 @@ Your own costs are the Postgres instance and Vercel — both free to start.
 
 ```bash
 export DATABASE_URL="sqlite:///./data/saas.db"   # Postgres in production, not this
-export APP_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
 export SECURE_COOKIES=0                          # cookies over plain HTTP
 uvicorn saas.app:app --reload --port 8000
 ```
