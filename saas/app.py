@@ -378,6 +378,11 @@ def post_setup(body: SetupBody, user: dict = Depends(current_user)) -> dict:
         raise HTTPException(400, str(e)) from e
 
     config["avoid"] = body.avoid
+    # The user's custom board list lives inside the same targets blob, so it has to
+    # be carried across. Without this, changing your role choice silently reset the
+    # companies you had added — the one setting worth the most to a user.
+    if (companies := existing.get("companies")):
+        config["companies"] = companies
     store.save_targets(user["id"], config)
     return {
         "roles": config["preset_keys"],

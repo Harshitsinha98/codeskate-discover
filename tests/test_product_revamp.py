@@ -274,6 +274,29 @@ r = client.post("/api/setup", json={"roles": ["support", "sre", "data", "qa", "s
 check("setup rejects more than four roles", r.status_code == 422, str(r.status_code))
 
 
+section("Changing your role choice keeps your other settings")
+client.post("/api/settings/companies",
+            json={"companies": {"greenhouse": ["postman", "groww"], "lever": ["meesho"]}})
+check("custom company list saves",
+      client.get("/api/settings/companies").json()["is_custom"] is True)
+
+client.post("/api/setup", json={"roles": ["sre"], "cities": ["Hyderabad"], "years": 3.8})
+boards = client.get("/api/settings/companies").json()
+check("custom companies survive a role change", boards["is_custom"] is True, str(boards))
+check("the actual company slugs survive",
+      boards["companies"]["greenhouse"] == ["postman", "groww"], str(boards["companies"]))
+check("role change did apply", client.get("/api/setup").json()["roles"] == ["sre"])
+
+client.delete("/api/settings/companies")
+check("resetting companies goes back to the default",
+      client.get("/api/settings/companies").json()["is_custom"] is False)
+check("resetting companies keeps the role choice",
+      client.get("/api/setup").json()["roles"] == ["sre"])
+
+client.post("/api/setup", json={"roles": ["support"], "cities": ["Bengaluru", "Pune"],
+                                "years": 3.8})
+
+
 section("Diagnostics endpoint")
 d = client.get("/api/diagnostics").json()
 check("diagnostics counts the shared pool", d["total"] == len(POOL), str(d["total"]))
