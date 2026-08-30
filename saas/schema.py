@@ -70,6 +70,19 @@ user_keys = Table(
     Column("updated_at", DateTime(timezone=True), server_default=func.now()),
 )
 
+# Reset tokens are stored hashed, like sessions, and are single-use. `used_at`
+# rather than deletion so a replayed link can be told apart from an expired one.
+password_resets = Table(
+    "password_resets",
+    metadata,
+    Column("token_hash", String(64), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("used_at", DateTime(timezone=True)),
+    Index("ix_resets_user", "user_id"),
+)
+
 sessions = Table(
     "sessions",
     metadata,

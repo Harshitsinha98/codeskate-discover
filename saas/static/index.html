@@ -43,16 +43,49 @@
           <p id="pwHint" class="hidden text-xs text-slate-500 mt-1">At least 10 characters.</p>
         </div>
         <div id="authError" class="hidden text-sm text-rose-400"></div>
+        <div id="authNotice" class="hidden text-sm text-emerald-400"></div>
         <button id="authSubmit" type="submit"
                 class="w-full py-2.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white
                        text-sm font-medium disabled:opacity-50">Sign in</button>
       </form>
+
+      <button id="btnForgot" class="mt-3 text-xs text-slate-500 hover:text-slate-300">
+        Forgot your password?
+      </button>
     </div>
 
     <p class="text-xs text-slate-600 mt-4 text-center">
       You supply your own OpenAI or Anthropic API key, so your usage bills your
       account directly. Keys are encrypted at rest and never shown back to you.
     </p>
+    <p class="text-xs text-slate-600 mt-2 text-center">
+      <a href="/privacy" class="hover:text-slate-400 underline">Privacy</a> ·
+      <a href="/terms" class="hover:text-slate-400 underline">Terms</a>
+    </p>
+  </div>
+</div>
+
+<!-- ================= RESET PASSWORD ================= -->
+<div id="resetView" class="hidden min-h-full grid place-items-center px-5">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-7">
+      <div class="text-2xl font-semibold text-white tracking-tight">Set a new password</div>
+      <p class="text-sm text-slate-400 mt-2">This link works once and expires in 60 minutes.</p>
+    </div>
+    <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <form id="resetForm" class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-500">New password</label>
+          <input id="newPassword" type="password" required minlength="10"
+                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm
+                        focus:border-indigo-500 focus:outline-none">
+          <p class="text-xs text-slate-500 mt-1">At least 10 characters.</p>
+        </div>
+        <div id="resetError" class="hidden text-sm text-rose-400"></div>
+        <button type="submit" class="w-full py-2.5 rounded bg-indigo-600 hover:bg-indigo-500
+                text-white text-sm font-medium">Change password</button>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -79,6 +112,7 @@
       <button data-tab="pipeline" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Pipeline</button>
       <button data-tab="cost"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Cost</button>
       <button data-tab="settings" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Settings</button>
+      <button data-tab="admin" id="adminTab" class="tab hidden px-3 py-2 border-b-2 border-transparent whitespace-nowrap text-amber-400">Admin</button>
     </div>
   </header>
 
@@ -289,6 +323,68 @@
         </div>
         <button id="btnSaveTargets" class="mt-4 px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save filters</button>
       </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <h2 class="font-medium text-white">Target companies</h2>
+        <p class="text-sm text-slate-400 mt-1">
+          The single highest-leverage setting here. 50 companies you would actually
+          join beats 5,000 postings you don't want. One slug per line under each source.
+        </p>
+        <p class="text-xs text-slate-500 mt-2">
+          Find a slug in a careers URL: <code class="text-slate-400">job-boards.greenhouse.io/<b>slug</b></code>,
+          <code class="text-slate-400">jobs.lever.co/<b>slug</b></code>,
+          <code class="text-slate-400">jobs.ashbyhq.com/<b>slug</b></code>.
+          Workday needs three parts, so those are edited as
+          <code class="text-slate-400">tenant|wd|site|search terms</code>.
+        </p>
+        <div id="boardsStatus" class="mt-3 text-sm"></div>
+        <div class="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
+          <label class="block">Greenhouse
+            <textarea id="bGreenhouse" rows="7" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+          <label class="block">Lever
+            <textarea id="bLever" rows="7" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+          <label class="block">Ashby
+            <textarea id="bAshby" rows="7" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+        </div>
+        <label class="block mt-3 text-sm">Workday <span class="text-xs text-slate-500">(tenant|wd|site|search1;search2)</span>
+          <textarea id="bWorkday" rows="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
+        <div class="mt-4 flex gap-2">
+          <button id="btnSaveBoards" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save companies</button>
+          <button id="btnResetBoards" class="px-3 py-2 rounded border border-slate-700 text-sm hover:bg-slate-800">Use defaults</button>
+        </div>
+        <p class="text-xs text-slate-500 mt-3">
+          Postings are shared across all accounts, so adding a company helps everyone —
+          and means discovery cost stays flat rather than multiplying per user.
+        </p>
+      </div>
+
+      <p class="text-xs text-slate-600">
+        <a href="/privacy" class="hover:text-slate-400 underline">Privacy</a> ·
+        <a href="/terms" class="hover:text-slate-400 underline">Terms</a>
+      </p>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="tab-admin" class="tabpane hidden space-y-5">
+      <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
+        Owner view. Deliberately shows counts and status only — never users'
+        documents, skill graphs, generated resumes, or key material. That boundary is
+        enforced in code so a compromised admin account cannot read anyone's resume.
+      </div>
+      <div id="adminCards" class="grid sm:grid-cols-4 gap-3"></div>
+      <div>
+        <h2 class="font-medium text-white mb-2">Activation funnel</h2>
+        <p class="text-sm text-slate-400 mb-3">Where people stop is the only number that says what to fix next.</p>
+        <div id="adminFunnel" class="space-y-1"></div>
+      </div>
+      <div>
+        <h2 class="font-medium text-white mb-2">Recent failures</h2>
+        <div id="adminErrors" class="space-y-1 text-sm"></div>
+      </div>
+      <div>
+        <h2 class="font-medium text-white mb-2">Users</h2>
+        <div id="adminUsers" class="overflow-x-auto"></div>
+      </div>
     </section>
   </main>
 </div>
@@ -392,6 +488,8 @@ function showTab(name) {
   if (name === 'matches') loadMatches();
   if (name === 'pipeline') loadPipeline();
   if (name === 'cost') loadCost();
+  if (name === 'settings') loadBoards();
+  if (name === 'admin') loadAdmin();
 }
 
 /* ---------------- jobs ---------------- */
@@ -521,6 +619,7 @@ async function refresh() {
     : '<span class="text-amber-400">No key saved. Agents cannot run.</span>';
   $('#limitInput').value = m.spend.limit;
   if (m.key) { $('#provider').value = m.key.provider; }
+  $('#adminTab').classList.toggle('hidden', !m.is_admin);
 }
 function dot(sel, done) {
   const el = $(sel);
@@ -719,8 +818,149 @@ function openDrawer(title, html) {
 }
 $('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
 
+/* ---------------- forgot / reset ---------------- */
+$('#btnForgot').onclick = async () => {
+  const email = $('#email').value.trim();
+  if (!email) { $('#email').focus(); return; }
+  const r = await post('/api/auth/forgot', { email });
+  $('#authError').classList.add('hidden');
+  $('#authNotice').textContent = r.detail + (r.mail_configured ? ''
+    : ' (No email provider is configured — the operator must read the link from the server log.)');
+  $('#authNotice').classList.remove('hidden');
+};
+
+$('#resetForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const token = new URLSearchParams(location.search).get('token') || '';
+  try {
+    const r = await post('/api/auth/reset', { token, password: $('#newPassword').value });
+    history.replaceState({}, '', '/');
+    $('#resetView').classList.add('hidden');
+    showAuth();
+    $('#authNotice').textContent = r.detail;
+    $('#authNotice').classList.remove('hidden');
+  } catch (err) {
+    $('#resetError').textContent = err.message;
+    $('#resetError').classList.remove('hidden');
+  }
+};
+
+/* ---------------- target companies ---------------- */
+async function loadBoards() {
+  const b = await api('/api/settings/companies');
+  const c = b.companies || {};
+  $('#bGreenhouse').value = (c.greenhouse || []).join('\n');
+  $('#bLever').value = (c.lever || []).join('\n');
+  $('#bAshby').value = (c.ashby || []).join('\n');
+  $('#bWorkday').value = (c.workday || []).map(w => {
+    const search = Array.isArray(w.search) ? w.search.join(';') : (w.search || '');
+    return `${w.tenant}|${w.wd}|${w.site}|${search}`;
+  }).join('\n');
+  $('#boardsStatus').innerHTML = b.is_custom
+    ? '<span class="text-emerald-400">Using your own company list.</span>'
+    : '<span class="text-slate-400">Using the shipped default list. Edit and save to make it yours.</span>';
+}
+$('#btnSaveBoards').onclick = async () => {
+  const workday = lines($('#bWorkday')).map(row => {
+    const [tenant, wd, site, search] = row.split('|').map(s => (s || '').trim());
+    if (!tenant || !wd || !site) return null;
+    return { tenant, wd, site, max: 40,
+             search: (search || '').split(';').map(s => s.trim()).filter(Boolean) };
+  }).filter(Boolean);
+  const companies = {
+    greenhouse: lines($('#bGreenhouse')), lever: lines($('#bLever')),
+    ashby: lines($('#bAshby')), workday,
+  };
+  try {
+    const r = await post('/api/settings/companies', { companies });
+    alert(`Saved ${r.boards} board(s). Run "Find jobs" to pull from them.`);
+    loadBoards();
+  } catch (e) { alert(e.message); }
+};
+$('#btnResetBoards').onclick = async () => {
+  await api('/api/settings/companies', { method: 'DELETE' });
+  loadBoards();
+};
+
+/* ---------------- admin ---------------- */
+async function loadAdmin() {
+  const o = await api('/api/admin/overview');
+  const card = (label, value, sub) => `
+    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div class="text-2xl font-semibold text-white">${value}</div>
+      <div class="text-xs text-slate-500 mt-0.5">${esc(label)}</div>
+      ${sub ? `<div class="text-xs text-slate-600 mt-1">${esc(sub)}</div>` : ''}</div>`;
+  $('#adminCards').innerHTML =
+    card('total users', o.users.total, `${o.users.new_7d} new this week`) +
+    card('active (24h)', o.users.active_24h, `${o.users.disabled} disabled`) +
+    card('shared postings', o.shared.postings.toLocaleString(),
+         `${o.shared.company_intel_cached} briefings cached`) +
+    card('LLM calls', o.usage.llm_calls.toLocaleString(),
+         `$${o.usage.spend_on_user_keys_usd} on users' own keys`);
+
+  $('#adminFunnel').innerHTML = o.funnel.map(f => `
+    <div class="flex items-center gap-3 text-sm">
+      <div class="w-40 text-slate-400 shrink-0">${esc(f.step)}</div>
+      <div class="flex-1 h-5 bg-slate-800 rounded overflow-hidden">
+        <div class="h-full bg-indigo-600" style="width:${f.pct}%"></div></div>
+      <div class="w-24 text-right text-slate-300">${f.users} <span class="text-slate-600">${f.pct}%</span></div>
+    </div>`).join('');
+
+  const q = Object.entries(o.queue).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'empty';
+  $('#adminErrors').innerHTML =
+    `<div class="text-xs text-slate-500 mb-2">queue — ${esc(q)}</div>` +
+    (o.recent_errors.length ? o.recent_errors.map(e => `
+      <div class="rounded border border-rose-900/50 bg-rose-950/20 p-2">
+        <span class="text-rose-300">${esc(e.kind)}</span>
+        <span class="text-xs text-slate-500">#${e.job_id} · ${esc(e.at)} · ${e.attempts} attempt(s)</span>
+        <div class="text-xs text-slate-400 mt-1">${esc(e.error)}</div></div>`).join('')
+      : '<div class="text-sm text-slate-500">No failures recorded.</div>');
+
+  const u = await api('/api/admin/users');
+  $('#adminUsers').innerHTML = `<table class="w-full text-sm whitespace-nowrap">
+    <thead class="text-xs text-slate-500 text-left"><tr>
+      <th class="py-1">email</th><th>key</th><th class="text-right">docs</th>
+      <th class="text-center">profile</th><th class="text-right">scored</th>
+      <th class="text-right">pipeline</th><th class="text-right">spend</th>
+      <th>last login</th><th></th></tr></thead>
+    <tbody>${u.users.map(x => `<tr class="border-t border-slate-800 ${x.is_active ? '' : 'opacity-40'}">
+      <td class="py-1.5 text-slate-300">${esc(x.email)}</td>
+      <td class="text-xs ${x.key_provider ? 'text-emerald-400' : 'text-slate-600'}">
+        ${x.key_provider ? esc(x.key_provider) + ' ' + esc(x.key_hint) : 'none'}</td>
+      <td class="text-right">${x.documents}</td>
+      <td class="text-center">${x.has_profile
+        ? '<span class="text-emerald-400">yes</span>'
+        : '<span class="text-slate-600">no</span>'}</td>
+      <td class="text-right">${x.scored}</td>
+      <td class="text-right">${x.pipeline}</td>
+      <td class="text-right text-slate-400">$${x.spend_usd}</td>
+      <td class="text-xs text-slate-600">${x.last_login_at ? esc(x.last_login_at.slice(0, 16)) : '—'}</td>
+      <td class="text-right"><button data-uid="${x.id}" data-active="${x.is_active}"
+        class="toggleUser text-xs ${x.is_active ? 'text-rose-400' : 'text-emerald-400'} hover:underline">
+        ${x.is_active ? 'disable' : 'enable'}</button></td>
+    </tr>`).join('')}</tbody></table>
+    <div class="text-xs text-slate-600 mt-2">${u.total} user(s). Documents and generated
+    content are not shown here by design.</div>`;
+
+  document.querySelectorAll('.toggleUser').forEach(b => b.onclick = async () => {
+    const active = b.dataset.active !== 'true';
+    if (!active && !confirm('Disable this account? Their sessions end immediately.')) return;
+    try {
+      await post(`/api/admin/users/${b.dataset.uid}/active`, { is_active: active });
+      loadAdmin();
+    } catch (e) { alert(e.message); }
+  });
+}
+
 /* ---------------- boot ---------------- */
 async function boot() {
+  const token = new URLSearchParams(location.search).get('token');
+  if (location.pathname === '/reset' && token) {
+    $('#authView').classList.add('hidden');
+    $('#appView').classList.add('hidden');
+    $('#resetView').classList.remove('hidden');
+    return;
+  }
   try {
     await refresh();
     showApp();

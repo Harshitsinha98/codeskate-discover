@@ -113,15 +113,19 @@ def discover_planner(user_id: int, payload: dict) -> dict:
     seconds. Workday boards are slower because each posting needs a second request
     for its description, so they are worth isolating.
     """
-    config = discovery.load_company_config()
+    # The user's own board list if they have configured one, otherwise the shipped
+    # default. Postings themselves stay shared across all users.
+    own = store.load_boards(user_id)
+    config = own or discovery.load_company_config()
     units = [
         {"ats": ats, "entry": entry}
         for ats, entries in config.items()
         for entry in entries
     ]
+    source = "your company list" if own else "the default company list"
     return {
         "payload": {"units": units},
-        "log": [f"planned {len(units)} board(s) to fetch — free, no LLM calls"],
+        "log": [f"planned {len(units)} board(s) from {source} — free, no LLM calls"],
     }
 
 

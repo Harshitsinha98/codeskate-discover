@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from codeskate.agents import career_manager, pipeline
 from codeskate.models import SkillGraph
 
-from . import auth, crypto, handlers, queue, store  # handlers registers job kinds
+from . import admin, auth, crypto, handlers, mailer, queue, store  # handlers registers kinds
 from .engine import create_all
 from .runtime import DEFAULT_MODELS, MissingKey
 
@@ -112,6 +112,59 @@ def logout(response: Response, cs_session: str | None = Cookie(default=None)) ->
 
 
 # --------------------------------------------------------------------------- #
+# password reset
+# --------------------------------------------------------------------------- #
+
+
+class ForgotBody(BaseModel):
+    email: str
+
+
+@app.post("/api/auth/forgot")
+def forgot_password(body: ForgotBody, request: Request) -> dict:
+    """Always reports success.
+
+    Reporting whether an address exists turns this endpoint into an account
+    enumeration tool, so the response is identical either way and the work happens
+    only when there is really an account.
+    """
+    user = store.user_by_email(body.email or "")
+    if user and user["is_active"]:
+        session = auth.new_session()  # same generator: random token, hash stored
+        store.create_password_reset(session.token_hash, user["id"])
+        base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+        mailer.send_password_reset(user["email"], f"{base}/reset?token={session.token}")
+
+    return {
+        "ok": True,
+        "detail": "If that email has an account, a reset link is on its way.",
+        # Tells the UI to warn the operator, without leaking anything about the
+        # account: with no provider configured the link only reaches the log.
+        "mail_configured": mailer.configured(),
+    }
+
+
+class ResetBody(BaseModel):
+    token: str
+    password: str
+
+
+@app.post("/api/auth/reset")
+def reset_password(body: ResetBody) -> dict:
+    try:
+        password = auth.validate_password(body.password)
+    except auth.AuthError as e:
+        raise HTTPException(400, str(e)) from e
+
+    user_id = store.consume_password_reset(auth.hash_token(body.token or ""))
+    if user_id is None:
+        raise HTTPException(400, "That reset link is invalid, already used, or expired")
+
+    store.set_password(user_id, auth.hash_password(password))
+    return {"ok": True, "detail": "Password changed. Sign in with your new password."}
+
+
+# --------------------------------------------------------------------------- #
 # settings
 # --------------------------------------------------------------------------- #
 
@@ -179,6 +232,8 @@ def me(user: dict = Depends(current_user)) -> dict:
 
     return {
         "email": user["email"],
+        "is_admin": admin.is_admin(user["email"]),
+        "mail_configured": mailer.configured(),
         "spend": {"used": round(store.total_spend(user_id), 4),
                   "limit": float(user["spend_limit_usd"])},
         "key": None if not key else {"provider": key["provider"], "hint": key["key_hint"],
@@ -518,9 +573,112 @@ def worker(request: Request) -> dict:
     return queue.work(budget_seconds=budget, max_jobs=10)
 
 
+# --------------------------------------------------------------------------- #
+# per-user target companies
+# --------------------------------------------------------------------------- #
+
+
+class BoardsBody(BaseModel):
+    companies: dict
+
+
+@app.get("/api/settings/companies")
+def get_companies(user: dict = Depends(current_user)) -> dict:
+    """The user's own board list, or the shipped default if they have not set one."""
+    from codeskate.agents import discovery
+
+    own = store.load_boards(user["id"])
+    return {
+        "companies": own or discovery.load_company_config(),
+        "is_custom": own is not None,
+        "sources": sorted(discovery.ALL_SOURCES),
+    }
+
+
+@app.post("/api/settings/companies")
+def set_companies(body: BoardsBody, user: dict = Depends(current_user)) -> dict:
+    from codeskate.agents import discovery
+
+    unknown = set(body.companies) - discovery.ALL_SOURCES
+    if unknown:
+        raise HTTPException(400, f"unsupported source(s): {', '.join(sorted(unknown))}")
+    total = sum(len(v) for v in body.companies.values())
+    if total > 300:
+        raise HTTPException(400, "Keep it under 300 boards — discovery would take too long")
+
+    store.save_boards(user["id"], body.companies)
+    return {"boards": total}
+
+
+@app.delete("/api/settings/companies")
+def reset_companies(user: dict = Depends(current_user)) -> dict:
+    config = store.load_targets(user["id"]) or {}
+    config.pop("companies", None)
+    store.save_targets(user["id"], config)
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------- #
+# admin
+# --------------------------------------------------------------------------- #
+
+
+def current_admin(user: dict = Depends(current_user)) -> dict:
+    if not admin.is_admin(user["email"]):
+        # 404 rather than 403: a non-admin has no business learning that this
+        # surface exists at all.
+        raise HTTPException(404, "Not found")
+    return user
+
+
+@app.get("/api/admin/overview")
+def admin_overview(user: dict = Depends(current_admin)) -> dict:
+    return admin.overview()
+
+
+@app.get("/api/admin/users")
+def admin_users(limit: int = 100, offset: int = 0,
+                user: dict = Depends(current_admin)) -> dict:
+    return admin.users(min(limit, 500), max(offset, 0))
+
+
+class ActiveBody(BaseModel):
+    is_active: bool
+
+
+@app.post("/api/admin/users/{user_id}/active")
+def admin_set_active(user_id: int, body: ActiveBody,
+                     user: dict = Depends(current_admin)) -> dict:
+    if user_id == user["id"] and not body.is_active:
+        raise HTTPException(400, "You cannot disable your own account")
+    admin.set_active(user_id, body.is_active)
+    return {"id": user_id, "is_active": body.is_active}
+
+
 @app.get("/healthz")
 def healthz() -> dict:
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------- #
+# legal
+# --------------------------------------------------------------------------- #
+
+
+@app.get("/privacy")
+def privacy() -> FileResponse:
+    return FileResponse(STATIC / "privacy.html")
+
+
+@app.get("/terms")
+def terms() -> FileResponse:
+    return FileResponse(STATIC / "terms.html")
+
+
+@app.get("/reset")
+def reset_page() -> FileResponse:
+    """The password-reset link lands here; the SPA reads the token from the query."""
+    return FileResponse(STATIC / "index.html")
 
 
 # --------------------------------------------------------------------------- #

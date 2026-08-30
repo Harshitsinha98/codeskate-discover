@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — CodeSkate</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-300">
+<div class="max-w-2xl mx-auto px-5 py-12">
+  <a href="/" class="text-sm text-indigo-400 hover:underline">&larr; Back to CodeSkate</a>
+  <h1 class="text-2xl font-semibold text-white mt-6">Privacy</h1>
+  <p class="text-xs text-slate-500 mt-1">Last updated: 30 August 2026</p>
+
+  <div class="prose prose-invert mt-8 space-y-6 text-sm leading-relaxed">
+
+    <section>
+      <h2 class="text-white font-medium">What is stored</h2>
+      <ul class="mt-2 space-y-1 list-disc list-inside">
+        <li><b>Your email and a password hash.</b> The password itself is never stored — only a scrypt hash, which cannot be reversed.</li>
+        <li><b>The documents you upload.</b> Resumes and brag documents are converted to text on upload and stored as text.</li>
+        <li><b>Your API key, encrypted.</b> Stored using authenticated encryption under a server-held secret. It is decrypted only in memory, only to make a call you asked for.</li>
+        <li><b>What the agents produce for you</b> — skill graph, match scores, tailored resumes, outreach drafts, interview briefs, pipeline stages.</li>
+        <li><b>Usage records</b> — which agent ran, which model, token counts and cost.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Who can see your documents</h2>
+      <p class="mt-2">
+        You can. The operator's admin view shows counts and status only — how many
+        documents you uploaded, whether a skill graph exists, how many jobs you
+        scored. It does not display your documents, your skill graph, or anything the
+        agents wrote for you, and it cannot decrypt your API key. It shows only the
+        provider name and the last four characters.
+      </p>
+      <p class="mt-2">
+        This is enforced in the code, not only in this policy. It is a deliberate
+        limit: it reduces what a compromised operator account could expose.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Where your data goes</h2>
+      <p class="mt-2">
+        To run an agent, the relevant part of your profile and a job description are
+        sent to the AI provider you chose — OpenAI or Anthropic — using
+        <b>your own API key</b>. That request is governed by your agreement with that
+        provider, not by this service. Nothing is sent to any other third party, and
+        your data is never sold, shared with recruiters, or used to train models by us.
+      </p>
+      <p class="mt-2">
+        Job postings are fetched from companies' own public job boards. No credentials
+        of yours are involved and nothing about you is sent to them.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Shared versus private</h2>
+      <p class="mt-2">
+        Job postings and company briefings are shared across all accounts, because
+        they are identical for everyone and fetching them once keeps costs flat.
+        Nothing derived from you is shared: your scores, resumes, pipeline and spend
+        are visible only to your account.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Deleting things</h2>
+      <ul class="mt-2 space-y-1 list-disc list-inside">
+        <li>Remove an uploaded document from the dashboard at any time.</li>
+        <li>Remove your stored API key from Settings at any time.</li>
+        <li>To delete your account and everything attached to it, email the operator. Deletion cascades — documents, profile, scores, artifacts and usage records all go.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Retention</h2>
+      <p class="mt-2">
+        Your data is kept while your account exists. Sessions expire after 30 days.
+        Password reset links expire after 60 minutes and work once.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Honest limitations</h2>
+      <p class="mt-2">
+        This is an early-stage product run by an individual, not a company with a
+        security team. Encryption, hashing and tenant isolation are implemented and
+        tested, but no independent security audit has been done. Use a spend limit,
+        and use an API key scoped to this purpose so you can revoke it without
+        affecting anything else.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium">Contact</h2>
+      <p class="mt-2">
+        Questions, or an account deletion request: contact the operator at the address
+        shown on the sign-in page.
+      </p>
+    </section>
+  </div>
+</div>
+</body>
+</html>

@@ -69,9 +69,32 @@ Settings → Environment Variables.
 `DATABASE_URL` | yes | Pooled Postgres URI |
 `APP_SECRET` | yes | Encrypts stored API keys. 32+ characters |
 `CRON_SECRET` | yes | Stops anyone from calling `/api/worker` and burning function time |
+`ADMIN_EMAILS` | yes | Comma-separated emails that get the owner dashboard. Unset means nobody is an admin |
+`PUBLIC_BASE_URL` | yes | e.g. `https://codeskate.vercel.app`. Used to build password-reset links |
+`RESEND_API_KEY` | strongly advised | Sends password-reset email. Without it, resets only reach the server log |
+`MAIL_FROM` | no | Defaults to Resend's shared sender. Use your own verified domain |
 `SECURE_COOKIES` | no | Defaults to on. Set `0` only for local HTTP testing |
 `WORKER_BUDGET` | no | Seconds the cron worker runs. Keep below `maxDuration` |
 `INLINE_WORKER_BUDGET` | no | Seconds spent draining the queue inside a user request |
+
+### About ADMIN_EMAILS
+
+Sign up with that address like any other user; the Admin tab then appears. The
+panel shows counts, the activation funnel, queue failures and per-user progress.
+
+It deliberately cannot show users' documents, skill graphs, generated resumes, or
+decrypted API keys — only a provider name and the last four characters of a key.
+That boundary is enforced in `saas/admin.py` and covered by tests. Keep it: it
+limits what a compromised owner account can leak, and it makes the claim in the
+privacy policy true rather than aspirational.
+
+### About email
+
+Password reset is the difference between an account being recoverable and a user
+being locked out forever. With no `RESEND_API_KEY`, the flow still works end to
+end but the link is printed to the function log, which means you have to fetch it
+manually for every user. [Resend](https://resend.com) has a free tier and takes a
+few minutes to set up — do it before inviting anyone other than yourself.
 
 ## 4. Know what the plan limits mean
 

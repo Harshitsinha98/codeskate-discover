@@ -619,3 +619,90 @@ def spend_by_agent(user_id: int) -> list[dict]:
                 .order_by(desc("cost"))
             )
         )
+
+
+
+# --------------------------------------------------------------------------- #
+# password resets
+# --------------------------------------------------------------------------- #
+
+
+def create_password_reset(token_hash: str, user_id: int, ttl_minutes: int = 60) -> None:
+    with get_engine().begin() as c:
+        # One live token per user: requesting a new link should invalidate the old
+        # one rather than leaving several valid at once.
+        c.execute(
+            s.password_resets.delete().where(
+                and_(s.password_resets.c.user_id == user_id,
+                     s.password_resets.c.used_at.is_(None))
+            )
+        )
+        c.execute(
+            s.password_resets.insert().values(
+                token_hash=token_hash, user_id=user_id,
+                created_at=_now(), expires_at=_now() + timedelta(minutes=ttl_minutes),
+            )
+        )
+
+
+def consume_password_reset(token_hash: str) -> int | None:
+    """Return the user_id and mark the token used, or None if it is not usable.
+
+    Marking and checking happen in one transaction so the same link cannot be
+    redeemed twice by two concurrent requests.
+    """
+    with get_engine().begin() as c:
+        row = c.execute(
+            select(s.password_resets.c.user_id).where(
+                and_(
+                    s.password_resets.c.token_hash == token_hash,
+                    s.password_resets.c.used_at.is_(None),
+                    s.password_resets.c.expires_at > _now(),
+                )
+            )
+        ).first()
+        if not row:
+            return None
+        c.execute(
+            s.password_resets.update()
+            .where(s.password_resets.c.token_hash == token_hash)
+            .values(used_at=_now())
+        )
+        return int(row[0])
+
+
+def set_password(user_id: int, password_hash: str) -> None:
+    """Change the password and drop every session for that user.
+
+    Signing other sessions out is the point: if the reset was triggered because
+    someone else had access, leaving their session alive defeats the exercise.
+    """
+    with get_engine().begin() as c:
+        c.execute(
+            s.users.update().where(s.users.c.id == user_id).values(password_hash=password_hash)
+        )
+        c.execute(s.sessions.delete().where(s.sessions.c.user_id == user_id))
+
+
+# --------------------------------------------------------------------------- #
+# per-user target boards
+# --------------------------------------------------------------------------- #
+#
+# Stored inside the user's targets config rather than in its own table: it is one
+# more thing the user is targeting, and it keeps the shape simple.
+#
+# Note that discovered postings remain shared. One user adding a company makes its
+# postings available to everyone, which is the intended behaviour — it is why
+# discovery cost stays flat as the user base grows.
+
+
+def load_boards(user_id: int) -> dict | None:
+    config = load_targets(user_id) or {}
+    boards = config.get("companies")
+    return boards if boards else None
+
+
+def save_boards(user_id: int, boards: dict) -> None:
+    config = load_targets(user_id) or {}
+    config["companies"] = boards
+    save_targets(user_id, config)
