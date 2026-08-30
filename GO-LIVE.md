@@ -121,6 +121,22 @@ precautionary — the image build is the peak memory moment:
 swapon --show          # expect a 2G entry
 ```
 
+### Preflight — run this before building
+
+```bash
+bash ~/codeskate/deploy/preflight.sh
+```
+
+Read-only apart from writing a baseline and copying your proxy config. It checks
+there is enough memory to build without endangering the existing service, records
+what is running and how it responds so you can compare afterwards, and backs up
+`/etc/nginx` and `/etc/caddy`.
+
+It exits non-zero and tells you to stop if headroom is insufficient. Take that
+seriously: the Linux OOM killer does not kill the newest process, it kills the one
+with the worst badness score — usually the largest. On a 1 GB box that is more
+likely to be the existing app than the new one.
+
 ---
 
 ## Phase 5 — Configuration (SSH, 7 min)
@@ -158,12 +174,17 @@ Because the existing proxy owns 80 and 443, use the shared-proxy compose file. I
 starts no Caddy of its own and binds the app to `127.0.0.1:8000`, so it is not
 reachable from the internet except through the proxy.
 
+Build with a memory cap first, so the build itself cannot starve the existing
+service, then start:
+
 ```bash
 cd ~/codeskate/deploy
-docker compose -f docker-compose.shared-proxy.yml up -d --build
+docker compose -f docker-compose.shared-proxy.yml build --memory 400m
+docker compose -f docker-compose.shared-proxy.yml up -d
 ```
 
-First build takes 5-10 minutes on a micro instance. Then:
+Do it at a quiet hour. The build is the only moment in this process that puts real
+pressure on memory. First build takes 5-10 minutes on a micro instance. Then:
 
 ```bash
 docker compose -f docker-compose.shared-proxy.yml logs -f app
@@ -300,6 +321,33 @@ only the upgrade button is inert.
    `.env`, then `docker compose -f docker-compose.shared-proxy.yml up -d`.
 
 ---
+
+## Rollback
+
+Nothing here shares state with the existing app: separate directory, separate port,
+separate database. So undoing it is genuinely clean.
+
+```bash
+cd ~/codeskate/deploy
+docker compose -f docker-compose.shared-proxy.yml down          # stop and remove
+docker image rm codeskate-app 2>/dev/null                        # reclaim the disk
+```
+
+If the proxy was edited and something is wrong, restore the backup preflight made:
+
+```bash
+ls -d ~/codeskate-proxy-backup-*                                 # pick the timestamp
+sudo cp -a ~/codeskate-proxy-backup-<stamp>/nginx /etc/
+sudo nginx -t && sudo systemctl reload nginx                     # test BEFORE reloading
+```
+
+`nginx -t` before every reload is the habit that matters. A reload with a broken
+config takes down the site that was already working.
+
+For Caddy, `caddy validate --config /etc/caddy/Caddyfile` plays the same role.
+
+To remove it entirely, delete `~/codeskate` and the swap file if you added it —
+though the swap is worth keeping regardless, since it protects the existing app too.
 
 ## Operating it
 
