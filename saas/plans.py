@@ -47,11 +47,11 @@ FREE = Plan(
     monthly_runs=40,
     max_scores_per_batch=25,
     features=(
-        "Skill graph with evidence checking",
-        "Gap analysis",
-        "Job discovery from 37 company boards",
-        "Score up to 25 jobs at a time",
-        "40 agent runs per month",
+        "Profile built from your resume, with evidence checks",
+        "Live openings from India offices of top employers",
+        "Match score and a written reason for up to 25 jobs at a time",
+        "Honest readiness check on any role you name",
+        "40 credits a month",
     ),
     # The expensive, high-value agents are what Pro is for.
     blocked_agents=frozenset({"tailor", "outreach", "prep", "comp", "intel"}),
@@ -65,12 +65,13 @@ PRO = Plan(
     max_scores_per_batch=200,
     features=(
         "Everything in Free",
-        "Tailored resumes with fabrication checking",
-        "Cover letters, recruiter and hiring-manager outreach",
-        "Interview prep briefs and company briefings",
-        "Compensation bands",
+        "A resume rewritten for each job — checked so it never claims anything you did not do",
+        "Cover letter, recruiter message and hiring-manager email, ready to send",
+        "Interview prep: the questions you will get and where you will get caught out",
+        "Company briefing before every call",
+        "Salary band and a recommended number to ask for",
         "Score up to 200 jobs at a time",
-        "800 agent runs per month",
+        "800 credits a month",
     ),
 )
 
@@ -91,13 +92,28 @@ def global_daily_run_cap() -> int:
     return int(os.getenv("GLOBAL_DAILY_RUN_CAP", "5000"))
 
 
+BLURBS = {
+    "free": "Enough to see your real matches and decide whether this is any good.",
+    "pro": "For when you are actually applying — everything unlocked, every week.",
+}
+
+
 def catalogue() -> list[dict]:
+    """Plan data for the pricing page and the in-app upgrade card.
+
+    `monthly_runs` is surfaced as **credits** in every user-facing string. "Agent
+    run" is an implementation detail: it tells a job seeker nothing, and the first
+    round of feedback on this product was that it read like a developer's notes
+    rather than a product.
+    """
     return [
         {
             "key": p.key,
             "name": p.name,
             "price_inr": p.price_inr,
-            "monthly_runs": p.monthly_runs,
+            "credits": p.monthly_runs,
+            "monthly_runs": p.monthly_runs,  # kept for older clients
+            "blurb": BLURBS[p.key],
             "features": list(p.features),
         }
         for p in (FREE, PRO)

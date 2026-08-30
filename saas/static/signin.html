@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — CodeSkate</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+  .glow { background: radial-gradient(50rem 30rem at 50% -8rem, rgba(99,102,241,.25), transparent 70%); }
+</style>
+</head>
+<body class="h-full bg-[#08080c] text-slate-300">
+<div class="glow min-h-full grid place-items-center px-5 py-12">
+  <div class="w-full max-w-sm">
+
+    <a href="/" class="flex items-center justify-center gap-2.5">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center">
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14l6-6 4 4 6-8"/></svg>
+      </div>
+      <span class="text-white font-semibold tracking-tight text-lg">CodeSkate</span>
+    </a>
+
+    <h1 class="mt-8 text-2xl font-semibold text-white text-center tracking-tight">
+      Welcome back
+    </h1>
+    <p class="mt-2.5 text-center text-slate-400 text-sm leading-relaxed">
+      Sign in to see your matches. New here? The same button creates your account —
+      the free plan needs no card.
+    </p>
+
+    <div class="mt-8 rounded-2xl border border-white/8 bg-white/[0.025] p-6">
+      <button id="btnGoogle"
+              class="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl bg-white
+                     text-slate-900 font-medium hover:bg-slate-100 transition">
+        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.4h12.7c-.3 2.1-1.6 5.2-4.6 7.3l7.6 5.9c4.5-4.2 6.8-10.3 6.8-17.5z"/><path fill="#FBBC05" d="M10.4 28.7a14.8 14.8 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.7-5.9l-7.6-5.9c-2 1.4-4.8 2.4-8.1 2.4-6.3 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+
+      <div id="authError" class="hidden mt-4 rounded-lg border border-rose-500/25 bg-rose-500/[0.07] p-3 text-sm text-rose-300"></div>
+      <div id="authNotice" class="hidden mt-4 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] p-3 text-sm text-amber-300"></div>
+
+      <p class="text-xs text-slate-500 mt-5 leading-relaxed">
+        No password to remember. We read your name, email address and profile picture —
+        nothing else, and nothing is posted anywhere on your behalf.
+      </p>
+    </div>
+
+    <div class="mt-6 space-y-2.5 text-sm text-slate-400">
+      <div class="flex gap-2.5">
+        <svg viewBox="0 0 20 20" class="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>
+        <span>40 free credits every month</span>
+      </div>
+      <div class="flex gap-2.5">
+        <svg viewBox="0 0 20 20" class="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>
+        <span>Your resume stays private to your account</span>
+      </div>
+      <div class="flex gap-2.5">
+        <svg viewBox="0 0 20 20" class="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>
+        <span>No subscription trap — Pro is bought one month at a time</span>
+      </div>
+    </div>
+
+    <p class="text-xs text-slate-600 mt-8 text-center">
+      <a href="/" class="hover:text-slate-400">Back to home</a> ·
+      <a href="/privacy" class="hover:text-slate-400 underline">Privacy</a> ·
+      <a href="/terms" class="hover:text-slate-400 underline">Terms</a>
+    </p>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+
+// Anyone already holding a valid session should not be looking at a sign-in page.
+fetch('/api/me', { credentials: 'same-origin' })
+  .then(r => { if (r.ok) location.replace('/app'); });
+
+const err = new URLSearchParams(location.search).get('auth_error');
+if (err) {
+  $('#authError').textContent = err;
+  $('#authError').classList.remove('hidden');
+  history.replaceState({}, '', '/signin');
+}
+
+fetch('/api/config').then(r => r.json()).then(c => {
+  if (!c.google_configured) {
+    $('#authNotice').textContent =
+      'Google sign-in is not configured on this deployment yet. Nothing you can fix from here.';
+    $('#authNotice').classList.remove('hidden');
+    $('#btnGoogle').disabled = true;
+    $('#btnGoogle').classList.add('opacity-40', 'cursor-not-allowed');
+  }
+}).catch(() => {});
+
+$('#btnGoogle').onclick = async () => {
+  try {
+    const r = await fetch('/api/auth/google/start', { credentials: 'same-origin' });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || 'Could not start sign-in');
+    location.href = body.url;
+  } catch (e) {
+    $('#authError').textContent = e.message;
+    $('#authError').classList.remove('hidden');
+  }
+};
+</script>
+</body>
+</html>

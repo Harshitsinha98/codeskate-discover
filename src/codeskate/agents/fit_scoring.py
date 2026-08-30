@@ -73,34 +73,195 @@ def _norm(s: str | None) -> str:
     return f" {re.sub(r'  +', ' ', cleaned).strip()} "
 
 
+class _Rules:
+    """The prefilter's configuration, resolved once instead of per posting."""
+
+    __slots__ = ("include", "exclude", "locations", "remote_ok", "remote_exclude", "min_desc")
+
+    def __init__(self, targets: dict[str, Any]) -> None:
+        self.include = [t.lower() for t in targets.get("title_include", [])]
+        self.exclude = [t.lower() for t in targets.get("title_exclude", [])]
+        self.locations = [l.lower() for l in targets.get("locations", [])]
+        self.remote_ok = bool(targets.get("remote_ok", True))
+        self.remote_exclude = [r.lower() for r in targets.get("remote_exclude_regions", [])]
+        self.min_desc = int(targets.get("min_description_chars", 200))
+
+
+# Rejection reasons, in the order they are tested. Ordering matters for the
+# report: a posting is attributed to the first rule that rejected it, so the
+# counts add up to the total instead of double-counting.
+TITLE_MISS = "title_not_relevant"
+TITLE_EXCLUDED = "title_excluded"
+DESC_SHORT = "description_too_short"
+LOCATION = "location_outside_target"
+
+REASON_LABELS = {
+    TITLE_MISS: "Title is not one of the roles you asked for",
+    TITLE_EXCLUDED: "Title matched one of your exclusions",
+    DESC_SHORT: "Posting has almost no description to score against",
+    LOCATION: "Location is outside the places you chose",
+}
+
+
+def _reject(job: Any, r: _Rules) -> tuple[str, str] | None:
+    """Why this posting was dropped, or None if it survived.
+
+    Split out of prefilter so the free filter and the explanation of the free
+    filter can never disagree. Returning the offending term as well as the reason
+    is what lets the UI say "'senior' removed 240 postings" instead of the useless
+    "no matches found".
+    """
+    title = _norm(job["title"])
+
+    if r.include and not any(k in title for k in r.include):
+        return TITLE_MISS, ""
+    for k in r.exclude:
+        if k in title:
+            return TITLE_EXCLUDED, k.strip()
+    if _desc_len(job) < r.min_desc:
+        return DESC_SHORT, ""
+
+    if r.locations:
+        loc = _norm(job["location"])
+        in_target = any(l in loc for l in r.locations)
+        is_remote = "remote" in loc or "remote" in title
+        if not (
+            in_target
+            or (r.remote_ok and is_remote and _remote_is_open(loc, r.locations, r.remote_exclude))
+        ):
+            return LOCATION, (job["location"] or "not stated").strip()
+
+    return None
+
+
 def prefilter(jobs: list[sqlite3.Row], targets: dict[str, Any]) -> list[sqlite3.Row]:
     """Free, deterministic filter. Cheap to run, cheap to tune."""
-    include = [t.lower() for t in targets.get("title_include", [])]
-    exclude = [t.lower() for t in targets.get("title_exclude", [])]
-    locations = [l.lower() for l in targets.get("locations", [])]
-    remote_ok = bool(targets.get("remote_ok", True))
-    remote_exclude = [r.lower() for r in targets.get("remote_exclude_regions", [])]
-    min_desc = int(targets.get("min_description_chars", 200))
+    rules = _Rules(targets)
+    return [job for job in jobs if _reject(job, rules) is None]
 
-    kept = []
+
+def report(jobs: list[sqlite3.Row], targets: dict[str, Any]) -> dict[str, Any]:
+    """Run the filter and explain the outcome. Free — no model is involved.
+
+    This exists because of a specific failure: a user saw
+    `prefilter: 1368 unscored -> 0 plausible` and concluded the product was
+    broken. It was not — the postings were real and the filter was working, the
+    titles just did not match. An empty result and a bug are indistinguishable
+    unless the system says which rule emptied it, so it now does.
+    """
+    rules = _Rules(targets)
+
+    kept: list[Any] = []
+    counts: dict[str, int] = {}
+    terms: dict[str, int] = {}
+    places: dict[str, int] = {}
+    # Postings that only failed on location are the interesting near miss: the
+    # role is right, so widening the city list would surface them immediately.
+    right_role_wrong_place: list[dict] = []
+    excluded_samples: list[dict] = []
+
     for job in jobs:
-        title = _norm(job["title"])
-        if include and not any(k in title for k in include):
-            continue
-        if any(k in title for k in exclude):
-            continue
-        if _desc_len(job) < min_desc:
+        verdict = _reject(job, rules)
+        if verdict is None:
+            kept.append(job)
             continue
 
-        if locations:
-            loc = _norm(job["location"])
-            in_target = any(l in loc for l in locations)
-            is_remote = "remote" in loc or "remote" in title
-            if not (in_target or (remote_ok and is_remote and _remote_is_open(loc, locations, remote_exclude))):
-                continue
+        reason, detail = verdict
+        counts[reason] = counts.get(reason, 0) + 1
+        if reason == TITLE_EXCLUDED:
+            terms[detail] = terms.get(detail, 0) + 1
+            if len(excluded_samples) < 8:
+                excluded_samples.append(
+                    {"title": job["title"], "company": job["company"], "term": detail}
+                )
+        elif reason == LOCATION:
+            places[detail] = places.get(detail, 0) + 1
+            if len(right_role_wrong_place) < 12:
+                right_role_wrong_place.append(
+                    {"title": job["title"], "company": job["company"],
+                     "location": job["location"]}
+                )
 
-        kept.append(job)
-    return kept
+    def top(d: dict[str, int], n: int = 6) -> list[dict]:
+        return [
+            {"value": k, "count": v}
+            for k, v in sorted(d.items(), key=lambda kv: -kv[1])[:n]
+        ]
+
+    return {
+        "total": len(jobs),
+        "kept": len(kept),
+        "rejected": [
+            {"reason": reason, "label": REASON_LABELS[reason], "count": counts[reason]}
+            for reason in (TITLE_MISS, TITLE_EXCLUDED, DESC_SHORT, LOCATION)
+            if counts.get(reason)
+        ],
+        "top_exclusion_terms": top(terms),
+        "top_rejected_locations": top(places),
+        "right_role_wrong_place": right_role_wrong_place,
+        "excluded_samples": excluded_samples,
+        "advice": _advice(len(jobs), len(kept), counts, terms, places),
+    }
+
+
+def _advice(total: int, kept: int, counts: dict[str, int],
+            terms: dict[str, int], places: dict[str, int]) -> list[dict]:
+    """One or two concrete things to change, ordered by how much they would recover.
+
+    Not generic tips. Each entry names the rule, the cost of that rule in
+    postings, and the specific edit — otherwise it is decoration.
+    """
+    out: list[dict] = []
+
+    if total == 0:
+        return [{
+            "problem": "There are no job postings loaded yet.",
+            "fix": "Run a job search first — it is free and takes about a minute.",
+            "action": "discover",
+        }]
+
+    if kept >= 15:
+        return out
+
+    ranked = sorted(counts.items(), key=lambda kv: -kv[1])
+    for reason, count in ranked[:2]:
+        share = round(count / total * 100)
+        if reason == TITLE_MISS:
+            out.append({
+                "problem": f"{count:,} postings ({share}%) are for roles you did not "
+                           "ask for — usually a sign the chosen role types are too narrow "
+                           "for the companies being searched.",
+                "fix": "Add another role type, or add more companies to search.",
+                "action": "roles",
+            })
+        elif reason == TITLE_EXCLUDED:
+            worst = sorted(terms.items(), key=lambda kv: -kv[1])[:3]
+            named = ", ".join(f"'{t}' ({c})" for t, c in worst)
+            out.append({
+                "problem": f"{count:,} postings ({share}%) were removed by your own "
+                           f"exclusions: {named}.",
+                "fix": "If any of those are jobs you would actually take, remove that "
+                       "word from the exclusion list.",
+                "action": "filters",
+            })
+        elif reason == LOCATION:
+            worst = ", ".join(f"{p} ({c})" for p, c in
+                              sorted(places.items(), key=lambda kv: -kv[1])[:3])
+            out.append({
+                "problem": f"{count:,} postings ({share}%) are the right kind of role "
+                           f"in a city you did not select: {worst}.",
+                "fix": "Add those cities, or select 'Anywhere in India'.",
+                "action": "cities",
+            })
+        elif reason == DESC_SHORT:
+            out.append({
+                "problem": f"{count:,} postings ({share}%) have almost no description, "
+                           "so there is nothing to score against.",
+                "fix": "Nothing to do — these are usually placeholder listings and are "
+                       "correctly skipped.",
+                "action": "",
+            })
+    return out
 
 
 # Words that describe the arrangement rather than the place.

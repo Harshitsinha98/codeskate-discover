@@ -5,101 +5,146 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy — CodeSkate</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<style>body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+              -webkit-font-smoothing: antialiased; }</style>
 </head>
-<body class="bg-slate-950 text-slate-300">
-<div class="max-w-2xl mx-auto px-5 py-12">
-  <a href="/" class="text-sm text-indigo-400 hover:underline">&larr; Back to CodeSkate</a>
-  <h1 class="text-2xl font-semibold text-white mt-6">Privacy</h1>
-  <p class="text-xs text-slate-500 mt-1">Last updated: 30 August 2026</p>
+<body class="bg-[#08080c] text-slate-300">
+<div class="max-w-2xl mx-auto px-5 py-14">
+  <a href="/" class="text-sm text-indigo-400 hover:text-indigo-300">&larr; Back to CodeSkate</a>
+  <h1 class="text-3xl font-semibold text-white mt-7 tracking-tight">Privacy</h1>
+  <p class="text-xs text-slate-500 mt-2">Last updated: 30 August 2026</p>
 
-  <div class="prose prose-invert mt-8 space-y-6 text-sm leading-relaxed">
+  <div class="mt-10 space-y-8 text-sm leading-relaxed">
 
     <section>
-      <h2 class="text-white font-medium">What is stored</h2>
-      <ul class="mt-2 space-y-1 list-disc list-inside">
-        <li><b>Your email and a password hash.</b> The password itself is never stored — only a scrypt hash, which cannot be reversed.</li>
-        <li><b>The documents you upload.</b> Resumes and brag documents are converted to text on upload and stored as text.</li>
-        <li><b>Your API key, encrypted.</b> Stored using authenticated encryption under a server-held secret. It is decrypted only in memory, only to make a call you asked for.</li>
-        <li><b>What the agents produce for you</b> — skill graph, match scores, tailored resumes, outreach drafts, interview briefs, pipeline stages.</li>
-        <li><b>Usage records</b> — which agent ran, which model, token counts and cost.</li>
+      <h2 class="text-white font-medium text-base">The short version</h2>
+      <p class="mt-2">
+        Your resume is used to answer your own requests and nothing else. It is not shown to
+        other users, not sent to employers, not sold, and not visible in the operator's own
+        dashboard. There is no password to lose, because sign-in goes through Google.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium text-base">What is stored</h2>
+      <ul class="mt-2.5 space-y-2 list-disc list-outside ml-5">
+        <li><b class="text-slate-200">Your Google identity</b> — the account ID Google gives us,
+          your email address, your name and your profile picture URL. No password is created
+          or stored, because there is no password.</li>
+        <li><b class="text-slate-200">The documents you upload.</b> Resumes and achievement notes
+          are converted to plain text when you upload them, and the text is stored. The
+          original file is not kept.</li>
+        <li><b class="text-slate-200">What the AI produces for you</b> — your profile, match
+          scores and their reasoning, rewritten resumes, draft messages, interview prep, and
+          the stage each saved job is at.</li>
+        <li><b class="text-slate-200">What you told us you are looking for</b> — role types,
+          cities, years of experience and salary floor.</li>
+        <li><b class="text-slate-200">Usage records</b> — which action ran, when, and how many
+          tokens it used. This is how your credit count is calculated.</li>
+        <li><b class="text-slate-200">Payment records</b> — the Razorpay payment and order IDs,
+          the amount, and the status. <b>Card and UPI details never reach this service</b>;
+          they are handled entirely by Razorpay.</li>
       </ul>
     </section>
 
     <section>
-      <h2 class="text-white font-medium">Who can see your documents</h2>
+      <h2 class="text-white font-medium text-base">Who can see your documents</h2>
       <p class="mt-2">
-        You can. The operator's admin view shows counts and status only — how many
-        documents you uploaded, whether a skill graph exists, how many jobs you
-        scored. It does not display your documents, your skill graph, or anything the
-        agents wrote for you, and it cannot decrypt your API key. It shows only the
-        provider name and the last four characters.
+        Only you. The operator's admin view is built to show counts, revenue and error status —
+        how many documents exist, whether a profile has been built, how many jobs were scored.
+        It does not display your documents, your profile, or anything generated for you.
       </p>
-      <p class="mt-2">
-        This is enforced in the code, not only in this policy. It is a deliberate
-        limit: it reduces what a compromised operator account could expose.
-      </p>
-    </section>
-
-    <section>
-      <h2 class="text-white font-medium">Where your data goes</h2>
-      <p class="mt-2">
-        To run an agent, the relevant part of your profile and a job description are
-        sent to the AI provider you chose — OpenAI or Anthropic — using
-        <b>your own API key</b>. That request is governed by your agreement with that
-        provider, not by this service. Nothing is sent to any other third party, and
-        your data is never sold, shared with recruiters, or used to train models by us.
-      </p>
-      <p class="mt-2">
-        Job postings are fetched from companies' own public job boards. No credentials
-        of yours are involved and nothing about you is sent to them.
+      <p class="mt-2.5">
+        This is enforced in the code and covered by tests, not only stated in this policy.
+        Every query for your data requires your account ID; there is no unscoped way to read
+        it. That is a deliberate limit on what a compromised operator account could expose.
       </p>
     </section>
 
     <section>
-      <h2 class="text-white font-medium">Shared versus private</h2>
+      <h2 class="text-white font-medium text-base">Where your data goes</h2>
       <p class="mt-2">
-        Job postings and company briefings are shared across all accounts, because
-        they are identical for everyone and fetching them once keeps costs flat.
-        Nothing derived from you is shared: your scores, resumes, pipeline and spend
-        are visible only to your account.
+        To run an AI action, the relevant part of your profile plus a job description is sent
+        to our AI provider (OpenAI) over an encrypted connection, under an account belonging
+        to this service — you do not need an AI account of your own. We do not send your data
+        to any other third party, do not sell it, do not share it with recruiters, and do not
+        use it to train any model.
+      </p>
+      <p class="mt-2.5">
+        Job postings are read from companies' own public careers feeds. Nothing about you is
+        sent to those companies. When you apply, you do it yourself on their site.
+      </p>
+      <p class="mt-2.5">
+        Infrastructure: the application runs on a virtual machine in India, and the database
+        is hosted in Singapore by Neon. Payments are processed in India by Razorpay.
       </p>
     </section>
 
     <section>
-      <h2 class="text-white font-medium">Deleting things</h2>
-      <ul class="mt-2 space-y-1 list-disc list-inside">
-        <li>Remove an uploaded document from the dashboard at any time.</li>
-        <li>Remove your stored API key from Settings at any time.</li>
-        <li>To delete your account and everything attached to it, email the operator. Deletion cascades — documents, profile, scores, artifacts and usage records all go.</li>
+      <h2 class="text-white font-medium text-base">Shared versus private</h2>
+      <p class="mt-2">
+        Two things are shared across all accounts because they are identical for everyone and
+        fetching them once keeps the service cheap: <b>job postings</b> and <b>company
+        briefings</b>. Nothing derived from you is shared — your scores, resumes, messages,
+        saved jobs and usage are visible only to your account.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium text-base">Cookies</h2>
+      <p class="mt-2">
+        One cookie holds your sign-in session, and a second short-lived one protects the
+        Google sign-in handshake against cross-site request forgery. Both are strictly
+        necessary for the service to function. There is no advertising, analytics or
+        third-party tracking cookie on this site.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-white font-medium text-base">Deleting things</h2>
+      <ul class="mt-2.5 space-y-2 list-disc list-outside ml-5">
+        <li>Remove any uploaded document from inside the app at any time.</li>
+        <li>Sign out to end your session immediately.</li>
+        <li>To delete your account and everything attached to it, email
+          <a href="mailto:hello@codeskate.com" class="text-indigo-400 hover:text-indigo-300">hello@codeskate.com</a>
+          from your registered address. Deletion cascades: documents, profile, scores,
+          generated content, saved jobs and usage records all go. Payment records are kept
+          for as long as tax law requires.</li>
       </ul>
     </section>
 
     <section>
-      <h2 class="text-white font-medium">Retention</h2>
+      <h2 class="text-white font-medium text-base">Retention</h2>
       <p class="mt-2">
-        Your data is kept while your account exists. Sessions expire after 30 days.
-        Password reset links expire after 60 minutes and work once.
+        Your data is kept while your account exists. Sign-in sessions expire after 30 days and
+        expired ones are purged automatically.
       </p>
     </section>
 
     <section>
-      <h2 class="text-white font-medium">Honest limitations</h2>
+      <h2 class="text-white font-medium text-base">Honest limitations</h2>
       <p class="mt-2">
-        This is an early-stage product run by an individual, not a company with a
-        security team. Encryption, hashing and tenant isolation are implemented and
-        tested, but no independent security audit has been done. Use a spend limit,
-        and use an API key scoped to this purpose so you can revoke it without
-        affecting anything else.
+        This is an early-stage product run by an individual, not a company with a security
+        team. Tenant isolation is implemented and tested, traffic is encrypted, and payment
+        details never touch our servers — but no independent security audit has been carried
+        out. If that matters for your situation, it is a fair reason to wait.
       </p>
     </section>
 
     <section>
-      <h2 class="text-white font-medium">Contact</h2>
+      <h2 class="text-white font-medium text-base">Contact</h2>
       <p class="mt-2">
-        Questions, or an account deletion request: contact the operator at the address
-        shown on the sign-in page.
+        Questions, corrections or a deletion request:
+        <a href="mailto:hello@codeskate.com" class="text-indigo-400 hover:text-indigo-300">hello@codeskate.com</a>.
       </p>
     </section>
+  </div>
+
+  <div class="mt-12 pt-6 border-t border-white/8 text-sm text-slate-500 flex gap-6">
+    <a href="/" class="hover:text-slate-300">Home</a>
+    <a href="/terms" class="hover:text-slate-300">Terms</a>
+    <a href="/refunds" class="hover:text-slate-300">Refunds</a>
+    <a href="/contact" class="hover:text-slate-300">Contact</a>
   </div>
 </div>
 </body>

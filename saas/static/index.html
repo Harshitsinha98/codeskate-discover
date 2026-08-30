@@ -3,454 +3,528 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CodeSkate — AI agents for your job hunt</title>
+<title>CodeSkate</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
-  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  .card { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.08); }
+  .glow { background: radial-gradient(48rem 26rem at 50% -8rem, rgba(99,102,241,.20), transparent 70%); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 9px; }
 </style>
 </head>
-<body class="h-full bg-slate-950 text-slate-200">
+<body class="h-full bg-[#08080c] text-slate-300">
 
-<!-- ================= SIGN IN ================= -->
-<div id="authView" class="hidden min-h-full grid place-items-center px-5 py-10">
-  <div class="w-full max-w-md">
-    <div class="text-center">
-      <div class="text-3xl font-semibold text-white tracking-tight">CodeSkate</div>
-      <p class="text-slate-400 mt-3">
-        18 AI agents that find the jobs worth your time, tailor your resume without
-        inventing anything, and prepare you for the interview.
-      </p>
-    </div>
-
-    <div class="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
-      <button id="btnGoogle"
-              class="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-white
-                     text-slate-800 font-medium hover:bg-slate-100 transition">
-        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.4h12.7c-.3 2.1-1.6 5.2-4.6 7.3l7.6 5.9c4.5-4.2 6.8-10.3 6.8-17.5z"/><path fill="#FBBC05" d="M10.4 28.7a14.8 14.8 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.7-5.9l-7.6-5.9c-2 1.4-4.8 2.4-8.1 2.4-6.3 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-        Continue with Google
-      </button>
-      <div id="authError" class="hidden mt-4 text-sm text-rose-400"></div>
-      <div id="authNotice" class="hidden mt-4 text-sm text-amber-400"></div>
-      <p class="text-xs text-slate-500 mt-4">
-        No password to remember. We only read your name, email and profile picture.
-      </p>
-    </div>
-
-    <div id="planCards" class="mt-6 grid sm:grid-cols-2 gap-3"></div>
-
-    <p class="text-xs text-slate-600 mt-6 text-center">
-      <a href="/privacy" class="hover:text-slate-400 underline">Privacy</a> ·
-      <a href="/terms" class="hover:text-slate-400 underline">Terms</a>
-    </p>
+<!-- ===================== loading ===================== -->
+<div id="bootView" class="min-h-full grid place-items-center">
+  <div class="flex items-center gap-3 text-sm text-slate-500">
+    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div> Loading your workspace…
   </div>
 </div>
 
-<!-- ================= APP ================= -->
-<div id="appView" class="hidden min-h-full">
-  <header class="border-b border-slate-800 bg-slate-900/60 sticky top-0 z-20 backdrop-blur">
-    <div class="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
-      <div class="font-semibold tracking-tight text-white">CodeSkate</div>
-      <div class="ml-auto flex items-center gap-4 text-xs">
-        <div id="planBadge" class="px-2 py-1 rounded bg-slate-800"></div>
-        <div class="text-right hidden sm:block">
-          <div class="text-slate-500">agent runs</div>
-          <div id="runsText" class="font-medium">—</div>
+<!-- ===================== app shell ===================== -->
+<div id="appView" class="hidden min-h-full flex flex-col">
+
+  <header class="sticky top-0 z-30 border-b border-white/5 bg-[#08080c]/90 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-5 h-14 flex items-center gap-4">
+      <a href="/" class="flex items-center gap-2.5 shrink-0">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14l6-6 4 4 6-8"/></svg>
         </div>
-        <div class="w-20 h-1.5 bg-slate-800 rounded overflow-hidden">
-          <div id="runsBar" class="h-full bg-emerald-500" style="width:0%"></div>
-        </div>
-        <img id="avatar" class="w-6 h-6 rounded-full hidden" alt="">
-        <button id="btnLogout" class="text-slate-500 hover:text-slate-200">Sign out</button>
+        <span class="text-white font-semibold tracking-tight hidden sm:block">CodeSkate</span>
+      </a>
+
+      <div class="ml-auto flex items-center gap-3">
+        <button id="creditPill" class="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 pl-3 pr-1.5 py-1 hover:bg-white/8 transition">
+          <span id="creditText" class="text-xs text-slate-300">—</span>
+          <span class="w-14 h-1.5 rounded-full bg-white/10 overflow-hidden block">
+            <span id="creditBar" class="block h-full bg-emerald-500" style="width:0%"></span>
+          </span>
+          <span id="planTag" class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/10 text-slate-400">Free</span>
+        </button>
+        <img id="avatar" class="w-7 h-7 rounded-full hidden ring-1 ring-white/10" alt="">
+        <button id="btnLogout" class="text-xs text-slate-500 hover:text-slate-200 transition">Sign out</button>
       </div>
     </div>
-    <div class="max-w-6xl mx-auto px-5 flex gap-1 text-sm overflow-x-auto">
-      <button data-tab="home"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Get started</button>
-      <button data-tab="matches"  class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Matches</button>
-      <button data-tab="pipeline" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Pipeline</button>
-      <button data-tab="plan"     class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Plan &amp; usage</button>
-      <button data-tab="settings" class="tab px-3 py-2 border-b-2 border-transparent whitespace-nowrap">Settings</button>
-      <button data-tab="admin" id="adminTab" class="tab hidden px-3 py-2 border-b-2 border-transparent whitespace-nowrap text-amber-400">Admin</button>
+
+    <div id="navRow" class="max-w-6xl mx-auto px-5 flex gap-1 text-sm overflow-x-auto">
+      <button data-tab="matches"  class="tab px-3.5 py-2.5 border-b-2 border-transparent whitespace-nowrap transition">Matches</button>
+      <button data-tab="saved"    class="tab px-3.5 py-2.5 border-b-2 border-transparent whitespace-nowrap transition">Saved jobs</button>
+      <button data-tab="profile"  class="tab px-3.5 py-2.5 border-b-2 border-transparent whitespace-nowrap transition">My profile</button>
+      <button data-tab="plan"     class="tab px-3.5 py-2.5 border-b-2 border-transparent whitespace-nowrap transition">Plan &amp; credits</button>
+      <button data-tab="admin" id="adminTab" class="tab hidden px-3.5 py-2.5 border-b-2 border-transparent whitespace-nowrap text-amber-400 transition">Admin</button>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-5 py-6">
+  <main class="flex-1 max-w-6xl w-full mx-auto px-5 py-7">
 
-    <!-- HOME -->
-    <section id="tab-home" class="tabpane space-y-5">
-      <div class="rounded-lg border border-indigo-800/60 bg-indigo-950/30 p-4">
-        <div class="text-xs uppercase tracking-wide text-indigo-400 mb-2">Do this next</div>
-        <div id="nextActions" class="space-y-2 text-sm">loading…</div>
-      </div>
+    <!-- ============ ONBOARDING ============ -->
+    <section id="tab-setup" class="tabpane hidden">
+      <div class="max-w-3xl">
+        <h1 class="text-2xl md:text-3xl font-semibold text-white tracking-tight">Let us get you set up</h1>
+        <p class="mt-2.5 text-slate-400">Three things, about five minutes. Then you get your matches.</p>
 
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <div class="flex items-start gap-3">
-          <div id="s1dot" data-n="1" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">1</div>
-          <div class="flex-1">
-            <h2 class="font-medium text-white">Your documents</h2>
-            <p class="text-sm text-slate-400 mt-1">
-              Resume (PDF) plus a brag document listing achievements <b>with numbers</b>.
-              Vague inputs produce a vague system — this is the highest-return hour in the process.
-            </p>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <label class="cursor-pointer px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
-                Upload files
+        <!-- step 1 -->
+        <div id="stepDocs" class="mt-9 card rounded-2xl p-6">
+          <div class="flex items-start gap-4">
+            <div id="dotDocs" class="shrink-0 w-8 h-8 rounded-lg bg-white/8 grid place-items-center text-sm font-semibold text-slate-400">1</div>
+            <div class="flex-1 min-w-0">
+              <h2 class="text-white font-medium">Add your resume</h2>
+              <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">
+                A PDF is fine. If you also have a list of things you achieved — with numbers,
+                like "held SLA above 95% across a 150-ticket-a-day queue" — add that too. It is
+                the single biggest difference between a good result here and a vague one.
+              </p>
+
+              <label id="dropZone" class="mt-4 block rounded-xl border-2 border-dashed border-white/12 hover:border-indigo-500/50 hover:bg-indigo-500/[0.04] transition cursor-pointer p-7 text-center">
+                <svg viewBox="0 0 24 24" class="w-7 h-7 mx-auto text-slate-500" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M8 8l4-4 4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                <div class="mt-2.5 text-sm text-slate-300 font-medium">Drop your resume here, or click to choose</div>
+                <div class="mt-1 text-xs text-slate-500">PDF, Markdown or text · up to 2MB each</div>
                 <input id="fileInput" type="file" multiple accept=".pdf,.md,.txt" class="hidden">
               </label>
-              <span class="text-xs text-slate-500">PDF text is extracted on upload. Max 2MB each.</span>
-            </div>
-            <div id="docList" class="mt-3 flex flex-wrap gap-2"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <div class="flex items-start gap-3">
-          <div id="s2dot" data-n="2" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">2</div>
-          <div class="flex-1">
-            <h2 class="font-medium text-white">Skill graph <span class="text-xs text-slate-500 font-normal">Agents 1 + 2</span></h2>
-            <p class="text-sm text-slate-400 mt-1">
-              Extracts every skill with a level and <b>whether there is evidence for it</b>.
-              Skills with no evidence are never claimed on a tailored resume.
-            </p>
-            <button data-job="profile" class="jobbtn mt-3 px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">
-              Build skill graph
-            </button>
-            <div id="profileBox" class="mt-4"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <div class="flex items-start gap-3">
-          <div id="s3dot" data-n="3" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">3</div>
-          <div class="flex-1">
-            <h2 class="font-medium text-white">Live jobs <span class="text-xs text-emerald-500 font-normal">Agent 4 · free, no runs used</span></h2>
-            <p class="text-sm text-slate-400 mt-1">
-              Reads companies' own public boards — Greenhouse, Lever, Ashby, Workday.
-              Runs one board at a time in the background, so you can keep working.
-            </p>
-            <button data-job="discover" class="jobbtn mt-3 px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">
-              Find jobs
-            </button>
-            <div id="postingCount" class="mt-3 text-sm text-slate-400"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <div class="flex items-start gap-3">
-          <div id="s4dot" data-n="4" class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">4</div>
-          <div class="flex-1">
-            <h2 class="font-medium text-white">Score matches <span class="text-xs text-slate-500 font-normal">Agent 5</span></h2>
-            <p class="text-sm text-slate-400 mt-1">
-              A free rule-based filter discards the obvious misses, then only the
-              survivors are scored — each with a written reason.
-            </p>
-            <div class="mt-3 flex items-center gap-3">
-              <button data-job="score" class="jobbtn px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">Score jobs</button>
-              <label class="text-sm text-slate-400">max
-                <input id="scoreLimit" type="number" value="25" min="1" max="200"
-                       class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1"></label>
-              <span id="batchHint" class="text-xs text-slate-500"></span>
+              <div id="docList" class="mt-3.5 flex flex-wrap gap-2"></div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <div class="flex items-start gap-3">
-          <div class="mt-0.5 w-6 h-6 shrink-0 rounded-full bg-slate-700 text-xs grid place-items-center font-semibold">5</div>
-          <div class="flex-1">
-            <h2 class="font-medium text-white">Gap analysis <span class="text-xs text-slate-500 font-normal">Agent 3</span></h2>
-            <p class="text-sm text-slate-400 mt-1">
-              What is actually blocking you, and the smallest concrete thing you could
-              build to make each claim truthful.
-            </p>
-            <div class="mt-3 flex flex-wrap items-center gap-2">
-              <input id="gapRole" placeholder="e.g. Cloud Support Engineer at an MNC in India, 3-4 years"
-                     class="flex-1 min-w-[260px] bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm">
-              <button data-job="gaps" class="jobbtn px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium">Analyse</button>
+        <!-- step 2 -->
+        <div id="stepRoles" class="mt-4 card rounded-2xl p-6">
+          <div class="flex items-start gap-4">
+            <div id="dotRoles" class="shrink-0 w-8 h-8 rounded-lg bg-white/8 grid place-items-center text-sm font-semibold text-slate-400">2</div>
+            <div class="flex-1 min-w-0">
+              <h2 class="text-white font-medium">What kind of work do you want?</h2>
+              <p class="mt-1.5 text-sm text-slate-400">
+                Pick one or two. This is what decides your matches, so it is worth ten seconds
+                of thought. You can change it whenever you like.
+              </p>
+              <div id="suggestNote" class="hidden mt-3 rounded-lg border border-indigo-500/25 bg-indigo-500/[0.07] px-3.5 py-2.5 text-sm text-indigo-200"></div>
+              <div id="roleCards" class="mt-4 grid sm:grid-cols-2 gap-2.5"></div>
+
+              <div class="mt-6 grid sm:grid-cols-2 gap-5">
+                <div>
+                  <div class="text-sm text-slate-300 font-medium">Where?</div>
+                  <div id="cityChips" class="mt-2.5 flex flex-wrap gap-1.5"></div>
+                  <label class="mt-3 flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                    <input id="remoteOk" type="checkbox" checked class="rounded bg-white/10 border-white/20">
+                    Include remote roles open to India
+                  </label>
+                </div>
+                <div class="space-y-3">
+                  <label class="block text-sm">
+                    <span class="text-slate-300 font-medium">Years of experience</span>
+                    <input id="inpYears" type="number" step="0.5" min="0" max="50"
+                      class="mt-1.5 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-slate-100 focus:border-indigo-500/60 outline-none">
+                    <span class="text-xs text-slate-500">Used to skip roles that would reject you on years alone.</span>
+                  </label>
+                  <label class="block text-sm">
+                    <span class="text-slate-300 font-medium">Minimum salary you would accept (LPA)</span>
+                    <input id="inpSalary" type="number" min="0" max="500"
+                      class="mt-1.5 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-slate-100 focus:border-indigo-500/60 outline-none">
+                    <span class="text-xs text-slate-500">Leave blank if you would rather not filter on it.</span>
+                  </label>
+                </div>
+              </div>
+
+              <button id="btnSaveSetup" class="mt-6 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium transition">
+                Save what I am looking for
+              </button>
+              <span id="setupSaved" class="hidden ml-3 text-sm text-emerald-400">Saved</span>
             </div>
-            <div id="gapBox" class="mt-4"></div>
+          </div>
+        </div>
+
+        <!-- step 3 -->
+        <div id="stepGo" class="mt-4 rounded-2xl border-2 border-indigo-500/30 bg-indigo-500/[0.06] p-6">
+          <div class="flex items-start gap-4">
+            <div id="dotGo" class="shrink-0 w-8 h-8 rounded-lg bg-indigo-500/20 grid place-items-center text-sm font-semibold text-indigo-300">3</div>
+            <div class="flex-1">
+              <h2 class="text-white font-medium">Find my matches</h2>
+              <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">
+                One button. We read your resume, search company career pages for live openings
+                in your cities, and score the ones that fit. Takes two to three minutes — you
+                can watch it happen.
+              </p>
+              <button id="btnGo" class="mt-4 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-medium hover:from-indigo-400 hover:to-violet-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                Find my matches
+                <svg viewBox="0 0 20 20" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5l4.5 4.5-4.5 4.5"/></svg>
+              </button>
+              <div id="goHint" class="mt-2.5 text-xs text-slate-500"></div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- MATCHES -->
-    <section id="tab-matches" class="tabpane hidden space-y-4">
-      <div class="flex flex-wrap items-center gap-3">
-        <h2 class="font-medium text-white">Scored matches</h2>
-        <label class="text-sm text-slate-400 ml-auto">min score
-          <input id="minScore" type="number" value="0" min="0" max="100"
-                 class="ml-2 w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1"></label>
-        <button id="btnShortlist" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
-          Shortlist strong ones
-        </button>
+    <!-- ============ MATCHES ============ -->
+    <section id="tab-matches" class="tabpane hidden">
+      <div id="nextUp" class="hidden mb-5"></div>
+
+      <div class="flex flex-wrap items-end gap-4">
+        <div>
+          <h1 class="text-xl font-semibold text-white tracking-tight">Your matches</h1>
+          <div id="matchSummary" class="text-sm text-slate-500 mt-1">—</div>
+        </div>
+        <div class="ml-auto flex flex-wrap items-center gap-2">
+          <button id="btnRefreshJobs" class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition">
+            Search for new openings
+            <span class="text-emerald-400 text-xs">· free</span>
+          </button>
+          <button id="btnScoreMore" class="px-3.5 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:from-indigo-400 hover:to-violet-500 transition">
+            Score more jobs
+          </button>
+        </div>
       </div>
-      <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
-        <b>The test that matters:</b> read the top 20 and ask — would I actually apply to 15 of these?
-        If not, your filters or your target companies need work. Polished applications
-        to jobs you don't want are worth nothing.
+
+      <div class="mt-5 flex flex-wrap items-center gap-2">
+        <div class="flex rounded-lg border border-white/10 overflow-hidden text-sm">
+          <button data-band="all"    class="band px-3.5 py-1.5 transition">All</button>
+          <button data-band="strong" class="band px-3.5 py-1.5 border-l border-white/10 transition">Strong</button>
+          <button data-band="stretch"class="band px-3.5 py-1.5 border-l border-white/10 transition">Worth a shot</button>
+          <button data-band="weak"   class="band px-3.5 py-1.5 border-l border-white/10 transition">Long shots</button>
+        </div>
+        <input id="matchSearch" placeholder="Filter by company or title…"
+          class="flex-1 min-w-[180px] bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-indigo-500/60 outline-none">
+        <button id="btnSaveStrong" class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition">Save all strong</button>
+        <button id="btnWhy" class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-400 hover:bg-white/5 transition">Why these results?</button>
       </div>
-      <div id="matchList" class="space-y-2"></div>
+
+      <div id="whyBox" class="hidden mt-4"></div>
+      <div id="matchList" class="mt-5 space-y-3"></div>
     </section>
 
-    <!-- PIPELINE -->
-    <section id="tab-pipeline" class="tabpane hidden space-y-4">
-      <h2 class="font-medium text-white">Your pipeline</h2>
-      <div id="funnelRow" class="flex flex-wrap gap-2"></div>
-      <div id="ratesBox" class="text-sm text-slate-400"></div>
-      <div id="appList" class="space-y-2"></div>
+    <!-- ============ SAVED ============ -->
+    <section id="tab-saved" class="tabpane hidden">
+      <h1 class="text-xl font-semibold text-white tracking-tight">Saved jobs</h1>
+      <p class="text-sm text-slate-500 mt-1">Everything you are working on, and who has gone quiet.</p>
+      <div id="savedAlerts" class="mt-5 space-y-2.5"></div>
+      <div id="funnelRow" class="mt-5 flex flex-wrap gap-2.5"></div>
+      <div id="appList" class="mt-5 space-y-2.5"></div>
     </section>
 
-    <!-- PLAN & USAGE -->
-    <section id="tab-plan" class="tabpane hidden space-y-5 max-w-3xl">
-      <div id="quotaBox"></div>
-      <div id="upgradeBox" class="grid sm:grid-cols-2 gap-3"></div>
+    <!-- ============ PROFILE ============ -->
+    <section id="tab-profile" class="tabpane hidden space-y-5">
       <div>
-        <h2 class="font-medium text-white mb-2">Runs by agent</h2>
-        <div id="usageBox"></div>
+        <h1 class="text-xl font-semibold text-white tracking-tight">My profile</h1>
+        <p class="text-sm text-slate-500 mt-1">What we know about you, and what is holding you back.</p>
       </div>
-      <div>
-        <h2 class="font-medium text-white mb-2">Payments</h2>
-        <div id="paymentsBox" class="text-sm text-slate-400"></div>
-      </div>
-    </section>
 
-    <!-- SETTINGS -->
-    <section id="tab-settings" class="tabpane hidden space-y-5 max-w-2xl">
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <h2 class="font-medium text-white">Job filters</h2>
-        <p class="text-sm text-slate-400 mt-1">
-          Applied for free before any model runs, so tuning this is the cheapest way to
-          improve results. One value per line.
+      <div class="card rounded-2xl p-6">
+        <div class="flex flex-wrap items-start gap-4">
+          <div class="flex-1 min-w-0">
+            <h2 class="text-white font-medium">Your documents</h2>
+            <p class="mt-1 text-sm text-slate-400">Change these and rebuild your profile to update everything.</p>
+            <div id="docList2" class="mt-3 flex flex-wrap gap-2"></div>
+          </div>
+          <label class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition cursor-pointer">
+            Add a file
+            <input id="fileInput2" type="file" multiple accept=".pdf,.md,.txt" class="hidden">
+          </label>
+          <button data-job="profile" class="jobbtn px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition">
+            Re-read my resume
+          </button>
+        </div>
+        <div id="profileBox" class="mt-5"></div>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <h2 class="text-white font-medium">What is holding you back</h2>
+        <p class="mt-1 text-sm text-slate-400 leading-relaxed">
+          Name a role and get an honest read: what is actually blocking you, and the smallest
+          concrete thing you could build or do to make each claim true. Costs one credit.
         </p>
-        <div class="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
-          <label class="block">Titles must include
-            <textarea id="tInclude" rows="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-          <label class="block">Titles must exclude
-            <textarea id="tExclude" rows="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-          <label class="block">Locations
-            <textarea id="tLocations" rows="3" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-          <div class="space-y-2">
-            <label class="block">Years of experience
-              <input id="tYoe" type="number" step="0.5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2"></label>
-            <label class="block">Minimum salary (LPA)
-              <input id="tSalary" type="number" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2"></label>
+        <div class="mt-3.5 flex flex-wrap gap-2">
+          <input id="gapRole" placeholder="e.g. Cloud Support Engineer at an MNC in Bengaluru, 3-4 years"
+            class="flex-1 min-w-[260px] bg-black/30 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:border-indigo-500/60 outline-none">
+          <button data-job="gaps" class="jobbtn px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium transition">
+            Check my readiness
+          </button>
+        </div>
+        <div id="gapBox" class="mt-4"></div>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex-1">
+            <h2 class="text-white font-medium">What I am looking for</h2>
+            <div id="targetSummary" class="mt-2 text-sm text-slate-400"></div>
+          </div>
+          <button id="btnEditTargets" class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition shrink-0">Change</button>
+        </div>
+      </div>
+
+      <details class="card rounded-2xl p-6 group">
+        <summary class="cursor-pointer list-none flex items-center gap-3">
+          <span class="text-white font-medium flex-1">Advanced: companies we search, and the exact filter rules</span>
+          <svg class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+        </summary>
+        <div class="mt-5 space-y-5">
+          <div>
+            <div class="text-sm text-slate-400 leading-relaxed">
+              We read these companies' careers feeds directly. Adding a company you would
+              actually join is the highest-value change you can make here. Find the slug in a
+              careers URL — <code class="text-slate-300">job-boards.greenhouse.io/<b>slug</b></code>,
+              <code class="text-slate-300">jobs.lever.co/<b>slug</b></code>,
+              <code class="text-slate-300">jobs.ashbyhq.com/<b>slug</b></code>. One per line.
+            </div>
+            <div id="boardsStatus" class="mt-3 text-sm"></div>
+            <div class="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
+              <label class="block text-slate-400">Greenhouse
+                <textarea id="bGreenhouse" rows="6" class="mt-1 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 mono text-slate-200 outline-none focus:border-indigo-500/60"></textarea></label>
+              <label class="block text-slate-400">Lever
+                <textarea id="bLever" rows="6" class="mt-1 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 mono text-slate-200 outline-none focus:border-indigo-500/60"></textarea></label>
+              <label class="block text-slate-400">Ashby
+                <textarea id="bAshby" rows="6" class="mt-1 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 mono text-slate-200 outline-none focus:border-indigo-500/60"></textarea></label>
+            </div>
+            <label class="block mt-3 text-sm text-slate-400">Workday
+              <span class="text-xs text-slate-600">(tenant|wd|site|search terms separated by ;)</span>
+              <textarea id="bWorkday" rows="5" class="mt-1 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 mono text-slate-200 outline-none focus:border-indigo-500/60"></textarea></label>
+            <div class="mt-3.5 flex gap-2">
+              <button id="btnSaveBoards" class="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium transition">Save companies</button>
+              <button id="btnResetBoards" class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition">Back to defaults</button>
+            </div>
+          </div>
+
+          <div class="pt-5 border-t border-white/8">
+            <div class="text-sm text-slate-400">
+              These lists are generated from your role choice. Edit them only if you know
+              exactly what you want changed — a wrong entry here silently hides jobs.
+            </div>
+            <div class="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+              <label class="block text-slate-400">Job titles must contain one of
+                <textarea id="tInclude" rows="7" class="mt-1 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 mono text-slate-200 outline-none focus:border-indigo-500/60"></textarea></label>
+              <label class="block text-slate-400">…and none of these
+                <textarea id="tExclude" rows="7" class="mt-1 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 mono text-slate-200 outline-none focus:border-indigo-500/60"></textarea></label>
+            </div>
+            <button id="btnSaveRules" class="mt-3.5 px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium transition">Save these rules</button>
           </div>
         </div>
-        <button id="btnSaveTargets" class="mt-4 px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save filters</button>
-      </div>
-
-      <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-        <h2 class="font-medium text-white">Target companies</h2>
-        <p class="text-sm text-slate-400 mt-1">
-          The single highest-leverage setting here. 50 companies you would actually
-          join beats 5,000 postings you don't want. One slug per line.
-        </p>
-        <p class="text-xs text-slate-500 mt-2">
-          Find a slug in a careers URL: <code class="text-slate-400">job-boards.greenhouse.io/<b>slug</b></code>,
-          <code class="text-slate-400">jobs.lever.co/<b>slug</b></code>,
-          <code class="text-slate-400">jobs.ashbyhq.com/<b>slug</b></code>.
-          Workday needs <code class="text-slate-400">tenant|wd|site|search terms</code>.
-        </p>
-        <div id="boardsStatus" class="mt-3 text-sm"></div>
-        <div class="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
-          <label class="block">Greenhouse
-            <textarea id="bGreenhouse" rows="7" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-          <label class="block">Lever
-            <textarea id="bLever" rows="7" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-          <label class="block">Ashby
-            <textarea id="bAshby" rows="7" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-        </div>
-        <label class="block mt-3 text-sm">Workday <span class="text-xs text-slate-500">(tenant|wd|site|search1;search2)</span>
-          <textarea id="bWorkday" rows="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 log"></textarea></label>
-        <div class="mt-4 flex gap-2">
-          <button id="btnSaveBoards" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Save companies</button>
-          <button id="btnResetBoards" class="px-3 py-2 rounded border border-slate-700 text-sm hover:bg-slate-800">Use defaults</button>
-        </div>
-      </div>
+      </details>
 
       <p class="text-xs text-slate-600">
         <a href="/privacy" class="hover:text-slate-400 underline">Privacy</a> ·
-        <a href="/terms" class="hover:text-slate-400 underline">Terms</a>
+        <a href="/terms" class="hover:text-slate-400 underline">Terms</a> ·
+        <a href="/refunds" class="hover:text-slate-400 underline">Refunds</a> ·
+        <a href="/contact" class="hover:text-slate-400 underline">Contact</a>
       </p>
     </section>
 
-    <!-- ADMIN -->
+    <!-- ============ PLAN ============ -->
+    <section id="tab-plan" class="tabpane hidden space-y-5 max-w-3xl">
+      <div>
+        <h1 class="text-xl font-semibold text-white tracking-tight">Plan &amp; credits</h1>
+        <p class="text-sm text-slate-500 mt-1">One credit is one piece of AI work. Searching for jobs is always free.</p>
+      </div>
+      <div id="quotaBox"></div>
+      <div id="upgradeBox"></div>
+      <div class="card rounded-2xl p-6">
+        <h2 class="text-white font-medium">Where your credits went</h2>
+        <div id="usageBox" class="mt-3.5"></div>
+      </div>
+      <div class="card rounded-2xl p-6">
+        <h2 class="text-white font-medium">Payments</h2>
+        <div id="paymentsBox" class="mt-3 text-sm text-slate-400"></div>
+        <p class="mt-4 text-xs text-slate-600">
+          Need a refund or an invoice? Email hello@codeskate.com with the payment ID above.
+          <a href="/refunds" class="text-indigo-400 hover:text-indigo-300 underline">Refund policy</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ ADMIN ============ -->
     <section id="tab-admin" class="tabpane hidden space-y-5">
-      <div class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-sm text-amber-200/80">
-        Owner view. Shows counts, revenue and status only — never users' documents,
-        skill graphs or generated resumes. Enforced in code so a compromised owner
-        account cannot read anyone's resume.
+      <div class="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-amber-200/85">
+        Owner view. Counts, revenue and status only — never users' documents, profiles or
+        generated content. Enforced in code, so a compromised owner account cannot read
+        anyone's resume.
       </div>
       <div id="adminCards" class="grid sm:grid-cols-4 gap-3"></div>
       <div id="adminRevenue" class="grid sm:grid-cols-4 gap-3"></div>
-      <div>
-        <h2 class="font-medium text-white mb-2">Activation funnel</h2>
-        <p class="text-sm text-slate-400 mb-3">Where people stop is the only number that says what to fix next.</p>
-        <div id="adminFunnel" class="space-y-1"></div>
+      <div class="card rounded-2xl p-6">
+        <h2 class="text-white font-medium">Activation funnel</h2>
+        <p class="text-sm text-slate-500 mt-1 mb-4">Where people stop is the only number that says what to fix next.</p>
+        <div id="adminFunnel" class="space-y-1.5"></div>
       </div>
-      <div>
-        <h2 class="font-medium text-white mb-2">Recent failures</h2>
-        <div id="adminErrors" class="space-y-1 text-sm"></div>
+      <div class="card rounded-2xl p-6">
+        <h2 class="text-white font-medium mb-3">Recent failures</h2>
+        <div id="adminErrors" class="space-y-2 text-sm"></div>
       </div>
-      <div>
-        <h2 class="font-medium text-white mb-2">Users</h2>
+      <div class="card rounded-2xl p-6">
+        <h2 class="text-white font-medium mb-3">Users</h2>
         <div id="adminUsers" class="overflow-x-auto"></div>
       </div>
     </section>
   </main>
 </div>
 
-<!-- job progress toast -->
-<div id="jobToast" class="hidden fixed bottom-4 right-4 z-40 w-full max-w-md">
-  <div class="rounded-lg border border-slate-700 bg-slate-900 shadow-2xl p-4">
-    <div class="flex items-center gap-2">
-      <div id="jobSpinner" class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
-      <div id="jobLabel" class="text-sm font-medium text-white"></div>
-      <div id="jobProgress" class="ml-auto text-xs text-slate-500"></div>
-      <button id="jobClose" class="text-slate-500 hover:text-slate-200 text-lg leading-none">&times;</button>
+<!-- ===================== progress toast ===================== -->
+<div id="jobToast" class="hidden fixed bottom-4 right-4 z-40 w-full max-w-md px-4 sm:px-0">
+  <div class="rounded-2xl border border-white/10 bg-[#101018] shadow-2xl p-4">
+    <div class="flex items-center gap-2.5">
+      <div id="jobSpinner" class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0"></div>
+      <div id="jobLabel" class="text-sm font-medium text-white truncate"></div>
+      <div id="jobProgress" class="ml-auto text-xs text-slate-500 shrink-0"></div>
+      <button id="jobClose" class="text-slate-500 hover:text-slate-200 text-lg leading-none shrink-0">&times;</button>
     </div>
-    <div class="mt-2 h-1 bg-slate-800 rounded overflow-hidden">
-      <div id="jobBar" class="h-full bg-indigo-500 transition-all" style="width:0%"></div>
+    <div class="mt-2.5 h-1 bg-white/8 rounded-full overflow-hidden">
+      <div id="jobBar" class="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all" style="width:0%"></div>
     </div>
-    <pre id="jobLog" class="log mt-3 max-h-40 overflow-auto whitespace-pre-wrap text-slate-400"></pre>
-    <div id="jobError" class="hidden mt-2 text-sm text-rose-400"></div>
+    <pre id="jobLog" class="mono mt-3 max-h-36 overflow-auto whitespace-pre-wrap text-slate-500"></pre>
+    <div id="jobError" class="hidden mt-2.5 rounded-lg border border-rose-500/25 bg-rose-500/[0.08] p-2.5 text-sm text-rose-300"></div>
   </div>
 </div>
 
-<!-- drawer -->
-<div id="drawer" class="hidden fixed inset-0 z-30">
-  <div id="drawerBg" class="absolute inset-0 bg-black/60"></div>
-  <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-slate-900 border-l border-slate-800 overflow-y-auto">
-    <div class="sticky top-0 bg-slate-900 border-b border-slate-800 px-5 py-3 flex items-center">
-      <div id="drawerTitle" class="font-medium text-white text-sm"></div>
-      <button id="drawerClose" class="ml-auto text-slate-500 hover:text-slate-200 text-lg leading-none">&times;</button>
+<!-- ===================== drawer ===================== -->
+<div id="drawer" class="hidden fixed inset-0 z-40">
+  <div id="drawerBg" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+  <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-[#0c0c12] border-l border-white/8 flex flex-col">
+    <div class="border-b border-white/8 px-5 py-4 flex items-start gap-3 shrink-0">
+      <div class="min-w-0">
+        <div id="drawerTitle" class="font-medium text-white truncate"></div>
+        <div id="drawerSub" class="text-xs text-slate-500 mt-0.5 truncate"></div>
+      </div>
+      <button id="drawerClose" class="ml-auto text-slate-500 hover:text-white text-2xl leading-none shrink-0">&times;</button>
     </div>
-    <div id="drawerBody" class="p-5 space-y-4 text-sm"></div>
+    <div id="drawerTabs" class="flex gap-1 px-4 border-b border-white/8 text-sm overflow-x-auto shrink-0"></div>
+    <div id="drawerBody" class="flex-1 overflow-y-auto p-5 space-y-4 text-sm"></div>
   </div>
 </div>
+
+<!-- ===================== toast ===================== -->
+<div id="flash" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-white/10 bg-[#141420] px-4 py-2.5 text-sm text-slate-200 shadow-2xl"></div>
+
 
 <script>
-const $ = (s) => document.querySelector(s);
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const TICK = `<svg viewBox="0 0 20 20" class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-  stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
 
+/* Inline SVG rather than a text glyph: the tick and cross characters render as
+   empty boxes in several headless and Linux font stacks. */
+const TICK  = `<svg viewBox="0 0 20 20" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
+const ARROW = `<svg viewBox="0 0 20 20" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5l4.5 4.5-4.5 4.5"/></svg>`;
+
+let ME = null, CFG = null, SETUP = null;
+let MATCHES = [], BAND = 'all', SEARCH = '';
+let SEL_ROLES = new Set(), SEL_CITIES = new Set();
+
+/* ------------------------------------------------------------------ */
+/* http                                                                */
+/* ------------------------------------------------------------------ */
 async function api(path, opts = {}) {
   const r = await fetch(path, { credentials: 'same-origin', ...opts });
   const body = await r.json().catch(() => ({}));
-  if (r.status === 401) { showAuth(); throw new Error(body.detail || 'Sign in to continue'); }
-  // 402 means the plan or allowance blocks this, not that anything is broken.
+  if (r.status === 401) { location.replace('/signin'); throw new Error('signed out'); }
   if (r.status === 402) { const e = new Error(body.detail); e.upgrade = true; throw e; }
-  if (!r.ok) throw new Error(body.detail || `Request failed (${r.status})`);
+  if (r.status === 404) { const e = new Error(body.detail || 'not found'); e.missing = true; throw e; }
+  if (!r.ok) throw new Error(body.detail || `Something went wrong (${r.status})`);
   return body;
 }
 const post = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(b || {}) });
 
-/* ---------------- auth ---------------- */
-$('#btnGoogle').onclick = async () => {
-  try {
-    const { url } = await api('/api/auth/google/start');
-    location.href = url;
-  } catch (e) {
-    $('#authError').textContent = e.message;
-    $('#authError').classList.remove('hidden');
-  }
-};
+let flashTimer = null;
+function flash(msg, tone = 'info') {
+  const el = $('#flash');
+  el.textContent = msg;
+  el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-xl border px-4 py-2.5 text-sm shadow-2xl ' +
+    (tone === 'bad'  ? 'border-rose-500/30 bg-rose-950 text-rose-200'
+   : tone === 'good' ? 'border-emerald-500/30 bg-emerald-950 text-emerald-200'
+                     : 'border-white/10 bg-[#141420] text-slate-200');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.classList.add('hidden'), 4200);
+}
+
 $('#btnLogout').onclick = async () => { await post('/api/auth/logout'); location.href = '/'; };
 
-function showAuth() {
-  $('#appView').classList.add('hidden');
-  $('#authView').classList.remove('hidden');
-  const err = new URLSearchParams(location.search).get('auth_error');
-  if (err) {
-    $('#authError').textContent = err;
-    $('#authError').classList.remove('hidden');
-    history.replaceState({}, '', '/');
-  }
-  api('/api/config').then(c => {
-    if (!c.google_configured) {
-      $('#authNotice').textContent = 'Google sign-in is not configured on this deployment yet.';
-      $('#authNotice').classList.remove('hidden');
-      $('#btnGoogle').disabled = true;
-      $('#btnGoogle').classList.add('opacity-40');
-    }
-    $('#planCards').innerHTML = c.plans.map(p => `
-      <div class="rounded-lg border ${p.key === 'pro' ? 'border-indigo-700 bg-indigo-950/20' : 'border-slate-800 bg-slate-900/40'} p-4 text-left">
-        <div class="flex items-baseline gap-2">
-          <div class="font-medium text-white">${esc(p.name)}</div>
-          <div class="text-sm text-slate-400">${p.price_inr ? '₹' + p.price_inr + '/mo' : 'free'}</div>
-        </div>
-        <ul class="mt-2 space-y-1 text-xs text-slate-400">
-          ${p.features.map(f => `<li>· ${esc(f)}</li>`).join('')}</ul>
-      </div>`).join('');
-  }).catch(() => {});
-}
-function showApp() {
-  $('#authView').classList.add('hidden');
-  $('#appView').classList.remove('hidden');
+/* ------------------------------------------------------------------ */
+/* tabs                                                                */
+/* ------------------------------------------------------------------ */
+function needsSetup() {
+  const s = ME?.setup || {};
+  return !(s.has_documents && s.has_profile && s.has_targets && ME.scored_total > 0);
 }
 
-/* ---------------- tabs ---------------- */
-document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function syncSetupTab() {
+  let btn = $('[data-tab="setup"]');
+  if (needsSetup()) {
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.dataset.tab = 'setup';
+      btn.className = 'tab px-3.5 py-2.5 border-b-2 border-transparent whitespace-nowrap transition';
+      btn.textContent = 'Get started';
+      btn.onclick = () => showTab('setup');
+      $('#navRow').prepend(btn);
+    }
+  } else if (btn) {
+    btn.remove();
+  }
+}
+
+$$('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 function showTab(name) {
-  document.querySelectorAll('.tabpane').forEach(p => p.classList.add('hidden'));
-  $(`#tab-${name}`).classList.remove('hidden');
-  document.querySelectorAll('.tab').forEach(b => {
+  $$('.tabpane').forEach(p => p.classList.add('hidden'));
+  $(`#tab-${name}`)?.classList.remove('hidden');
+  $$('.tab').forEach(b => {
     const on = b.dataset.tab === name;
     b.classList.toggle('border-indigo-500', on);
     b.classList.toggle('text-white', on);
     b.classList.toggle('text-slate-500', !on);
   });
   if (name === 'matches') loadMatches();
-  if (name === 'pipeline') loadPipeline();
-  if (name === 'plan') loadPlan();
-  if (name === 'settings') loadBoards();
-  if (name === 'admin') loadAdmin();
+  if (name === 'saved')   loadSaved();
+  if (name === 'profile') loadBoards();
+  if (name === 'plan')    loadPlan();
+  if (name === 'admin')   loadAdmin();
 }
 
-/* ---------------- jobs ---------------- */
+/* ------------------------------------------------------------------ */
+/* jobs + progress                                                     */
+/* ------------------------------------------------------------------ */
 let poller = null;
 async function runJob(kind, body) {
   let started;
   try {
     started = await post(`/api/jobs/${kind}`, body);
   } catch (e) {
-    if (e.upgrade) { showTab('plan'); alert(e.message); return { state: 'blocked' }; }
-    throw e;
+    if (e.upgrade) { flash(e.message, 'bad'); showTab('plan'); return { state: 'blocked' }; }
+    flash(e.message, 'bad');
+    return { state: 'blocked' };
   }
-  const jobId = started.job_id;
+
+  const id = started.job_id;
   $('#jobToast').classList.remove('hidden');
   $('#jobError').classList.add('hidden');
   $('#jobLog').textContent = '';
-  $('#jobSpinner').className = 'w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse';
+  $('#jobBar').style.width = '0%';
+  $('#jobSpinner').className = 'w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0';
   clearInterval(poller);
 
   return new Promise((resolve) => {
     poller = setInterval(async () => {
       let j;
-      try { j = await post(`/api/jobs/${jobId}/resume`); }
-      catch (e) { clearInterval(poller); return; }
+      // Each poll also nudges the worker, so a long job keeps moving while the
+      // tab is open instead of waiting for the next scheduler tick.
+      try { j = await post(`/api/jobs/${id}/resume`); }
+      catch { clearInterval(poller); resolve({ state: 'error' }); return; }
 
       $('#jobLabel').textContent = j.label;
-      $('#jobProgress').textContent = j.units_total > 1 ? `${j.units_done}/${j.units_total}` : '';
+      $('#jobProgress').textContent = j.units_total > 1 ? `${j.units_done} of ${j.units_total}` : '';
       $('#jobBar').style.width = j.progress + '%';
       $('#jobLog').textContent = (j.log || []).join('\n');
       $('#jobLog').scrollTop = 1e6;
 
       if (j.state === 'done' || j.state === 'error') {
         clearInterval(poller);
-        $('#jobSpinner').className = 'w-2.5 h-2.5 rounded-full ' +
+        $('#jobSpinner').className = 'w-2 h-2 rounded-full shrink-0 ' +
           (j.state === 'error' ? 'bg-rose-500' : 'bg-emerald-500');
         if (j.error) {
           $('#jobError').textContent = j.error;
           $('#jobError').classList.remove('hidden');
+        } else {
+          setTimeout(() => $('#jobToast').classList.add('hidden'), 2500);
         }
         await refresh();
         resolve(j);
@@ -460,176 +534,925 @@ async function runJob(kind, body) {
 }
 $('#jobClose').onclick = () => $('#jobToast').classList.add('hidden');
 
-document.querySelectorAll('.jobbtn').forEach(b => b.onclick = async () => {
+$$('.jobbtn').forEach(b => b.onclick = async () => {
   const kind = b.dataset.job;
   const body = {};
-  if (kind === 'score') body.limit = +$('#scoreLimit').value;
   if (kind === 'gaps') {
     body.role = $('#gapRole').value.trim();
-    if (!body.role) { alert('Describe the role you are targeting.'); return; }
+    if (!body.role) { flash('Type the role you are aiming for first.', 'bad'); return; }
   }
-  try {
-    const j = await runJob(kind, body);
-    if (kind === 'score' && j.state === 'done') showTab('matches');
-  } catch (e) { alert(e.message); }
+  await runJob(kind, body);
 });
 
-/* ---------------- state ---------------- */
-let ME = null;
+/* ------------------------------------------------------------------ */
+/* state                                                               */
+/* ------------------------------------------------------------------ */
 async function refresh() {
   ME = await api('/api/me');
-  const m = ME, q = m.quota;
+  const q = ME.quota;
 
-  $('#planBadge').innerHTML = q.plan === 'pro'
-    ? '<span class="text-indigo-300">Pro</span>'
-    : '<span class="text-slate-400">Free</span>';
-  $('#runsText').textContent = `${q.runs_used} / ${q.runs_limit}`;
-  const pct = q.runs_limit ? Math.min(100, q.runs_used / q.runs_limit * 100) : 0;
-  $('#runsBar').style.width = pct + '%';
-  $('#runsBar').className = 'h-full ' + (pct > 85 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500');
-  if (m.avatar_url) { $('#avatar').src = m.avatar_url; $('#avatar').classList.remove('hidden'); }
-  $('#batchHint').textContent = `up to ${q.max_scores_per_batch} per batch on ${q.plan_name}`;
-  $('#scoreLimit').max = q.max_scores_per_batch;
+  const used = q.credits_used ?? q.runs_used, lim = q.credits_limit ?? q.runs_limit;
+  const pct = lim ? Math.min(100, used / lim * 100) : 0;
+  $('#creditText').textContent = `${Math.max(0, lim - used)} credits left`;
+  $('#creditBar').style.width = pct + '%';
+  $('#creditBar').className = 'block h-full ' +
+    (pct > 90 ? 'bg-rose-500' : pct > 65 ? 'bg-amber-500' : 'bg-emerald-500');
+  $('#planTag').textContent = q.plan_name;
+  $('#planTag').className = 'text-[10px] font-medium px-1.5 py-0.5 rounded ' +
+    (q.plan === 'pro' ? 'bg-indigo-500/25 text-indigo-200' : 'bg-white/10 text-slate-400');
 
-  if (!m.platform_ready) {
-    $('#nextActions').innerHTML =
-      '<div class="text-amber-400">The service is not fully configured yet. Agents cannot run.</div>';
-  } else {
-    const next = await api('/api/next');
-    $('#nextActions').innerHTML = next.actions.length ? next.actions.map((a, i) => `
-      <div class="flex gap-2"><span class="text-indigo-400 font-medium">${i + 1}.</span>
-      <div><div class="text-slate-100">${esc(a.label)}</div>
-      <div class="text-xs text-slate-500">${esc(a.why)}</div></div></div>`).join('')
-      : '<div class="text-slate-400">Nothing outstanding.</div>';
-  }
+  if (ME.avatar_url) { $('#avatar').src = ME.avatar_url; $('#avatar').classList.remove('hidden'); }
+  $('#adminTab').classList.toggle('hidden', !ME.is_admin);
 
-  $('#docList').innerHTML = m.documents.map(d => `
-    <span class="px-2 py-1 rounded bg-slate-800 text-xs flex items-center gap-2">
-      ${esc(d.filename)} <span class="text-slate-600">${(d.chars/1000).toFixed(1)}k</span>
-      <button data-del="${esc(d.filename)}" class="text-slate-500 hover:text-rose-400 leading-none">&times;</button>
-    </span>`).join('') || '<span class="text-xs text-slate-500">No documents yet</span>';
-  $('#docList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+  renderDocs();
+  renderProfileBox();
+  renderGapBox();
+  renderTargetSummary();
+  syncSetupTab();
+  markSteps();
+  return ME;
+}
+
+$('#creditPill').onclick = () => showTab('plan');
+
+/* ---------- documents ---------- */
+function renderDocs() {
+  const html = ME.documents.length ? ME.documents.map(d => `
+    <span class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/6 border border-white/8 text-xs">
+      <svg viewBox="0 0 20 20" class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v5h5M11 2H6a1.5 1.5 0 00-1.5 1.5v13A1.5 1.5 0 006 18h8a1.5 1.5 0 001.5-1.5V6.5L11 2z"/></svg>
+      <span class="text-slate-200">${esc(d.filename)}</span>
+      <span class="text-slate-600">${(d.chars / 1000).toFixed(1)}k characters read</span>
+      <button data-del="${esc(d.filename)}" class="text-slate-500 hover:text-rose-400 text-base leading-none">&times;</button>
+    </span>`).join('')
+    : '<span class="text-xs text-slate-600">Nothing uploaded yet</span>';
+
+  ['#docList', '#docList2'].forEach(sel => { const el = $(sel); if (el) el.innerHTML = html; });
+  $$('[data-del]').forEach(b => b.onclick = async () => {
     await api('/api/documents/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
+    flash('Removed. Re-read your resume to update your profile.');
     refresh();
   });
-
-  dot('#s1dot', m.documents.length > 0);
-  dot('#s2dot', !!m.profile);
-  dot('#s3dot', m.postings_total > 0);
-  dot('#s4dot', m.scored_total > 0);
-
-  $('#postingCount').textContent = m.postings_total
-    ? `${m.postings_total.toLocaleString()} postings available · ${m.scored_total} scored by you` : '';
-
-  $('#profileBox').innerHTML = !m.profile ? '' : `
-    <div class="rounded border border-slate-800 bg-slate-950/60 p-3">
-      <div class="text-sm text-white">${esc(m.profile.name || 'unknown')} · ${esc(m.profile.seniority || '?')} · ${m.profile.years} yrs</div>
-      <div class="text-xs text-slate-500 mt-0.5">${esc(m.profile.headline || '')}</div>
-      <div class="text-xs mt-2"><span class="text-emerald-400">${m.profile.skills_proven} evidence-backed</span>
-        <span class="text-slate-500">/ ${m.profile.skills_total} skills · ${m.profile.achievements} achievements</span></div>
-      <div class="mt-3 flex flex-wrap gap-1.5">
-        ${m.profile.skills.map(k => `<span class="px-1.5 py-0.5 rounded text-xs ${k.proven
-          ? 'bg-emerald-950 text-emerald-300 border border-emerald-900'
-          : 'bg-slate-800 text-slate-500 border border-slate-700'}">${esc(k.name)} ${k.level}</span>`).join('')}
-      </div>
-      <div class="text-xs text-slate-500 mt-3">Grey = no evidence found. Never claimed on a tailored resume.</div>
-    </div>`;
-
-  const g = m.gap_report;
-  $('#gapBox').innerHTML = !g ? '' : `
-    <div class="rounded border border-slate-800 bg-slate-950/60 p-3">
-      <div class="text-sm">readiness <b class="${g.readiness_pct >= 70 ? 'text-emerald-400' : g.readiness_pct >= 45 ? 'text-amber-400' : 'text-rose-400'}">${g.readiness_pct}%</b></div>
-      <div class="text-sm text-slate-400 mt-1">${esc(g.verdict)}</div>
-      ${(g.gaps || []).filter(x => x.severity === 'blocking').map(x => `
-        <div class="mt-2"><span class="text-rose-400 text-xs uppercase">blocking</span>
-        <div class="text-slate-200">${esc(x.skill)}</div>
-        <div class="text-xs text-slate-500">${esc(x.fastest_proof)}</div></div>`).join('')}
-    </div>`;
-
-  $('#adminTab').classList.toggle('hidden', !m.is_admin);
-}
-function dot(sel, done) {
-  const el = $(sel);
-  el.className = `mt-0.5 w-6 h-6 shrink-0 rounded-full text-white text-xs grid place-items-center font-semibold ${done ? 'bg-emerald-600' : 'bg-slate-700'}`;
-  el.innerHTML = done ? TICK : el.dataset.n;
 }
 
-$('#fileInput').onchange = async (e) => {
+async function upload(files) {
+  if (!files.length) return;
   const fd = new FormData();
-  [...e.target.files].forEach(f => fd.append('files', f));
-  try { await api('/api/documents', { method: 'POST', body: fd }); }
-  catch (err) { alert(err.message); }
-  e.target.value = ''; refresh();
+  [...files].forEach(f => fd.append('files', f));
+  try {
+    const r = await api('/api/documents', { method: 'POST', body: fd });
+    flash(`Added ${r.saved.join(', ')}`, 'good');
+    await refresh();
+  } catch (e) { flash(e.message, 'bad'); }
+}
+$('#fileInput').onchange  = (e) => { upload(e.target.files); e.target.value = ''; };
+$('#fileInput2').onchange = (e) => { upload(e.target.files); e.target.value = ''; };
+
+const dz = $('#dropZone');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+  e.preventDefault(); dz.classList.add('border-indigo-500/60', 'bg-indigo-500/[0.06]');
+}));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+  e.preventDefault(); dz.classList.remove('border-indigo-500/60', 'bg-indigo-500/[0.06]');
+}));
+dz.addEventListener('drop', e => upload(e.dataTransfer.files));
+
+/* ---------- profile ---------- */
+function renderProfileBox() {
+  const p = ME.profile;
+  if (!p) {
+    $('#profileBox').innerHTML = `<div class="rounded-xl border border-white/8 bg-black/20 p-4 text-sm text-slate-400">
+      Nothing read yet. Upload a resume, then press <b class="text-slate-200">Re-read my resume</b>.</div>`;
+    return;
+  }
+  $('#profileBox').innerHTML = `
+    <div class="rounded-xl border border-white/8 bg-black/20 p-4">
+      <div class="flex flex-wrap items-baseline gap-x-2.5">
+        <span class="text-white font-medium">${esc(p.name || 'You')}</span>
+        <span class="text-sm text-slate-500">${esc(p.seniority || '')} · ${p.years} years</span>
+      </div>
+      <div class="text-sm text-slate-400 mt-1">${esc(p.headline || '')}</div>
+      <div class="mt-3 flex flex-wrap gap-4 text-sm">
+        <span><b class="text-emerald-400">${p.skills_proven}</b>
+          <span class="text-slate-500">skills you can prove</span></span>
+        <span><b class="text-slate-300">${p.skills_total}</b>
+          <span class="text-slate-500">listed in total</span></span>
+        <span><b class="text-slate-300">${p.achievements}</b>
+          <span class="text-slate-500">achievements found</span></span>
+      </div>
+      <div class="mt-3.5 flex flex-wrap gap-1.5">
+        ${p.skills.map(k => `<span class="px-2 py-0.5 rounded-md text-xs border ${k.proven
+          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+          : 'bg-white/5 text-slate-500 border-white/8'}">${esc(k.name)}</span>`).join('')}
+      </div>
+      <p class="text-xs text-slate-600 mt-3.5 leading-relaxed">
+        Green means we found something in your own history that backs it up. Grey ones are
+        never written onto a resume for you — that is what stops it inventing things.
+      </p>
+    </div>`;
+}
+
+function renderGapBox() {
+  const g = ME.gap_report;
+  if (!g) { $('#gapBox').innerHTML = ''; return; }
+  const tone = g.readiness_pct >= 70 ? 'emerald' : g.readiness_pct >= 45 ? 'amber' : 'rose';
+  const blocking = (g.gaps || []).filter(x => x.severity === 'blocking');
+  $('#gapBox').innerHTML = `
+    <div class="rounded-xl border border-white/8 bg-black/20 p-4">
+      <div class="flex items-baseline gap-2.5">
+        <span class="text-2xl font-semibold text-${tone}-400">${g.readiness_pct}%</span>
+        <span class="text-sm text-slate-500">ready for that role today</span>
+      </div>
+      <p class="text-sm text-slate-300 mt-2 leading-relaxed">${esc(g.verdict)}</p>
+      ${blocking.length ? `<div class="mt-4 space-y-2.5">
+        <div class="text-xs uppercase tracking-wider text-rose-400">What is blocking you</div>
+        ${blocking.map(x => `<div class="rounded-lg border border-rose-500/20 bg-rose-500/[0.05] p-3">
+          <div class="text-slate-100 text-sm font-medium">${esc(x.skill)}</div>
+          <div class="text-sm text-slate-400 mt-1">${esc(x.fastest_proof)}</div></div>`).join('')}
+      </div>` : ''}
+    </div>`;
+}
+
+function renderTargetSummary() {
+  const s = ME.setup || {};
+  if (!s.has_targets) {
+    $('#targetSummary').innerHTML =
+      '<span class="text-amber-400">Not set yet — this is why your matches may look wrong.</span>';
+    return;
+  }
+  const names = (s.roles || []).map(k =>
+    (SETUP?.catalogue || CFG?.presets || []).find(p => p.key === k)?.name || k);
+  $('#targetSummary').innerHTML = `
+    <div class="flex flex-wrap gap-1.5">
+      ${names.map(n => `<span class="px-2 py-0.5 rounded-md text-xs bg-indigo-500/12 text-indigo-200 border border-indigo-500/25">${esc(n)}</span>`).join('')}
+    </div>
+    <div class="mt-2 text-slate-500">in ${(s.cities || []).map(esc).join(', ') || 'anywhere in India'}</div>`;
+}
+
+$('#btnEditTargets').onclick = () => { showTab('setup'); $('#stepRoles').scrollIntoView({ behavior: 'smooth' }); };
+
+/* ------------------------------------------------------------------ */
+/* onboarding                                                          */
+/* ------------------------------------------------------------------ */
+function markSteps() {
+  const s = ME.setup || {};
+  const set = (sel, done, n) => {
+    const el = $(sel); if (!el) return;
+    el.className = `shrink-0 w-8 h-8 rounded-lg grid place-items-center text-sm font-semibold ${done
+      ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/8 text-slate-400'}`;
+    el.innerHTML = done ? TICK : n;
+  };
+  set('#dotDocs', s.has_documents, '1');
+  set('#dotRoles', s.has_targets, '2');
+  set('#dotGo', ME.scored_total > 0, '3');
+
+  const ready = s.has_documents && s.has_targets;
+  $('#btnGo').disabled = !ready;
+  $('#goHint').textContent = !s.has_documents
+    ? 'Add your resume in step 1 first.'
+    : !s.has_targets ? 'Choose what you are looking for in step 2 first.'
+    : ME.scored_total > 0
+      ? `${ME.scored_total} jobs scored so far. Running this again picks up anything new.`
+      : 'Uses about one credit per job scored. Searching is free.';
+}
+
+async function loadSetup() {
+  SETUP = await api('/api/setup');
+  SEL_ROLES = new Set(SETUP.roles.length ? SETUP.roles : SETUP.suggested_roles);
+  SEL_CITIES = new Set(SETUP.cities);
+  if (SETUP.years) $('#inpYears').value = SETUP.years;
+  if (SETUP.min_salary_lpa) $('#inpSalary').value = SETUP.min_salary_lpa;
+  $('#remoteOk').checked = SETUP.remote_ok !== false;
+
+  if (!SETUP.roles.length && SETUP.suggested_roles.length) {
+    const names = SETUP.suggested_roles.map(k =>
+      SETUP.catalogue.find(p => p.key === k)?.name).filter(Boolean);
+    $('#suggestNote').innerHTML =
+      `Based on your resume we have pre-selected <b>${names.map(esc).join('</b> and <b>')}</b>. ` +
+      `Change it if that is not where you want to go next.`;
+    $('#suggestNote').classList.remove('hidden');
+  }
+  renderRoleCards();
+  renderCityChips();
+}
+
+function renderRoleCards() {
+  $('#roleCards').innerHTML = SETUP.catalogue.map(p => {
+    const on = SEL_ROLES.has(p.key);
+    return `<button data-role="${esc(p.key)}" class="text-left rounded-xl p-4 border transition ${on
+      ? 'border-indigo-500/50 bg-indigo-500/[0.09]'
+      : 'border-white/8 bg-white/[0.02] hover:bg-white/[0.05]'}">
+      <div class="flex items-start gap-2.5">
+        <span class="mt-0.5 w-4 h-4 rounded shrink-0 grid place-items-center border ${on
+          ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-white/25'}">
+          ${on ? '<svg viewBox="0 0 20 20" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>' : ''}
+        </span>
+        <div class="min-w-0">
+          <div class="text-white text-sm font-medium">${esc(p.name)}</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">${esc(p.tagline)}</div>
+          <div class="text-xs text-slate-600 mt-1.5">${esc(p.examples.slice(0, 3).join(' · '))}</div>
+        </div>
+      </div></button>`;
+  }).join('');
+
+  $$('[data-role]').forEach(b => b.onclick = () => {
+    const k = b.dataset.role;
+    if (SEL_ROLES.has(k)) SEL_ROLES.delete(k);
+    // Beyond two the feed turns into everything, which is the problem this solves.
+    else if (SEL_ROLES.size >= 3) { flash('Two role types give the sharpest list. Three is the limit.', 'bad'); return; }
+    else SEL_ROLES.add(k);
+    renderRoleCards();
+  });
+}
+
+function renderCityChips() {
+  $('#cityChips').innerHTML = SETUP.all_cities.map(c => {
+    const on = SEL_CITIES.has(c);
+    return `<button data-city="${esc(c)}" class="px-2.5 py-1.5 rounded-lg text-xs border transition ${on
+      ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-200'
+      : 'border-white/10 bg-white/[0.02] text-slate-400 hover:bg-white/5'}">${esc(c)}</button>`;
+  }).join('');
+  $$('[data-city]').forEach(b => b.onclick = () => {
+    const c = b.dataset.city;
+    SEL_CITIES.has(c) ? SEL_CITIES.delete(c) : SEL_CITIES.add(c);
+    renderCityChips();
+  });
+}
+
+$('#btnSaveSetup').onclick = async () => {
+  if (!SEL_ROLES.size) { flash('Pick at least one kind of role.', 'bad'); return; }
+  if (!SEL_CITIES.size) { flash('Pick at least one place.', 'bad'); return; }
+  try {
+    await post('/api/setup', {
+      roles: [...SEL_ROLES],
+      cities: [...SEL_CITIES],
+      years: +$('#inpYears').value || 0,
+      min_salary_lpa: +$('#inpSalary').value || 0,
+      remote_ok: $('#remoteOk').checked,
+      current_role: ME.profile?.headline || '',
+    });
+    $('#setupSaved').classList.remove('hidden');
+    setTimeout(() => $('#setupSaved').classList.add('hidden'), 2500);
+    await refresh();
+    await loadSetup();
+    flash('Saved. Press "Find my matches" to use it.', 'good');
+  } catch (e) { flash(e.message, 'bad'); }
 };
 
-/* ---------------- plan & usage ---------------- */
+/* The one button that replaced five numbered boxes. Each stage is skipped if it
+   has already been done, so pressing it again is a cheap refresh rather than a
+   full rerun. */
+$('#btnGo').onclick = async () => {
+  const btn = $('#btnGo');
+  btn.disabled = true;
+  try {
+    if (!ME.setup.has_profile) {
+      const j = await runJob('profile', {});
+      if (j.state !== 'done') return;
+    }
+    if (ME.postings_total === 0) {
+      const j = await runJob('discover', {});
+      if (j.state !== 'done') return;
+    }
+    const limit = Math.min(ME.quota.max_scores_per_batch,
+                           ME.quota.credits_left ?? ME.quota.runs_left ?? 25, 40);
+    if (limit < 1) { flash('You are out of credits for this month.', 'bad'); showTab('plan'); return; }
+    const j = await runJob('score', { limit });
+    if (j.state === 'done') { showTab('matches'); flash('Your matches are ready.', 'good'); }
+  } finally {
+    btn.disabled = false;
+    markSteps();
+  }
+};
+</script>
+
+
+<script>
+/* ------------------------------------------------------------------ */
+/* matches                                                             */
+/* ------------------------------------------------------------------ */
+const BANDS = {
+  all:     { test: () => true,                    empty: 'No jobs scored yet.' },
+  strong:  { test: (m) => m.score >= 70,          empty: 'No strong matches yet. Try "Worth a shot" — 55 and up is still worth an application with a referral.' },
+  stretch: { test: (m) => m.score >= 55 && m.score < 70, empty: 'Nothing in this band right now.' },
+  weak:    { test: (m) => m.score < 55,           empty: 'Nothing here — which is good news.' },
+};
+
+function scoreTone(s) {
+  if (s >= 70) return { ring: 'border-emerald-500/30 bg-emerald-500/10', text: 'text-emerald-300', word: 'Strong match' };
+  if (s >= 55) return { ring: 'border-amber-500/25 bg-amber-500/10',    text: 'text-amber-300',   word: 'Worth a shot' };
+  return          { ring: 'border-white/10 bg-white/5',                  text: 'text-slate-500',   word: 'Long shot' };
+}
+
+async function loadMatches() {
+  try {
+    const r = await api('/api/matches?limit=200&min_score=0');
+    MATCHES = r.matches;
+  } catch (e) { flash(e.message, 'bad'); return; }
+
+  const next = await api('/api/next').catch(() => ({ actions: [] }));
+  const a = next.actions?.[0];
+  if (a && (MATCHES.length === 0 || a.action === 'shortlist' || a.action === 'discover')) {
+    $('#nextUp').innerHTML = `
+      <div class="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.07] p-4 flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <div class="text-white text-sm font-medium">${esc(a.label)}</div>
+          <div class="text-xs text-indigo-200/70 mt-0.5">${esc(a.why)}</div>
+        </div>
+        ${a.action ? `<button id="btnNextAction" data-action="${esc(a.action)}"
+          class="px-3.5 py-2 rounded-lg bg-white/12 hover:bg-white/20 text-white text-sm font-medium transition">
+          Do it</button>` : ''}
+      </div>`;
+    $('#nextUp').classList.remove('hidden');
+    if ($('#btnNextAction')) $('#btnNextAction').onclick = () => doAction(a.action);
+  } else {
+    $('#nextUp').classList.add('hidden');
+  }
+
+  renderMatches();
+}
+
+async function doAction(action) {
+  if (action === 'upload' || action === 'setup' || action === 'profile') { showTab('setup'); return; }
+  if (action === 'gaps') { showTab('profile'); return; }
+  if (action === 'negotiate') { showTab('saved'); return; }
+  if (action === 'discover') { await runJob('discover', {}); loadMatches(); return; }
+  if (action === 'score')    { await runJob('score', { limit: 25 }); loadMatches(); return; }
+  if (action === 'shortlist' || action === 'tailor') { await saveStrong(); return; }
+}
+
+function renderMatches() {
+  const band = BANDS[BAND];
+  const q = SEARCH.trim().toLowerCase();
+  const rows = MATCHES.filter(m => band.test(m) &&
+    (!q || (m.title + ' ' + m.company).toLowerCase().includes(q)));
+
+  const strong = MATCHES.filter(m => m.score >= 70).length;
+  const stretch = MATCHES.filter(m => m.score >= 55 && m.score < 70).length;
+  $('#matchSummary').innerHTML = MATCHES.length
+    ? `${MATCHES.length} scored · <b class="text-emerald-400">${strong} strong</b> · ${stretch} worth a shot
+       · <span class="text-slate-600">${ME.postings_total.toLocaleString()} openings in the pool</span>`
+    : `<span class="text-slate-500">Nothing scored yet.</span>`;
+
+  if (!rows.length) {
+    $('#matchList').innerHTML = `
+      <div class="card rounded-2xl p-8 text-center">
+        <div class="text-slate-400">${esc(q ? 'Nothing matches that search.' : band.empty)}</div>
+        ${!q && !MATCHES.length ? `<button onclick="showTab('setup')"
+          class="mt-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium">
+          Go to setup</button>` : ''}
+        ${!q && MATCHES.length ? `<button id="btnWhy2"
+          class="mt-4 px-4 py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm">
+          Why these results?</button>` : ''}
+      </div>`;
+    if ($('#btnWhy2')) $('#btnWhy2').onclick = () => $('#btnWhy').click();
+    return;
+  }
+
+  $('#matchList').innerHTML = rows.map((m, i) => {
+    const t = scoreTone(m.score);
+    return `
+    <div class="card rounded-2xl p-5 hover:border-white/15 transition" data-idx="${i}">
+      <div class="flex items-start gap-4">
+        <div class="shrink-0 w-14 h-14 rounded-xl border grid place-items-center ${t.ring}">
+          <span class="text-lg font-semibold ${t.text}">${m.score}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span class="text-white font-medium">${esc(m.title)}</span>
+            <span class="text-xs px-1.5 py-0.5 rounded ${t.ring} ${t.text} border">${t.word}</span>
+            ${m.stage ? `<span class="text-xs px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">${esc(stageLabel(m.stage))}</span>` : ''}
+          </div>
+          <div class="text-sm text-slate-500 mt-1">${esc(m.company)} · ${esc(m.location || 'location not stated')}</div>
+          <p class="text-sm text-slate-400 mt-2.5 leading-relaxed">${esc(m.reasoning)}</p>
+
+          ${(m.matched || []).length ? `<div class="mt-3 flex flex-wrap gap-1.5">
+            ${m.matched.slice(0, 6).map(s => `<span class="px-1.5 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-300/90 border border-emerald-500/20">${esc(s)}</span>`).join('')}
+          </div>` : ''}
+          ${(m.missing || []).length ? `<div class="mt-1.5 text-xs text-slate-500">
+            They also ask for: <span class="text-rose-300/80">${m.missing.slice(0, 6).map(esc).join(', ')}</span></div>` : ''}
+
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button data-open="${i}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:from-indigo-400 hover:to-violet-500 transition">
+              Prepare my application ${ARROW}</button>
+            ${m.stage ? '' : `<button data-save="${i}" class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 transition">Save for later</button>`}
+            <a href="${esc(m.url)}" target="_blank" rel="noopener"
+               class="px-3.5 py-2 rounded-lg border border-white/10 text-sm text-slate-400 hover:bg-white/5 transition">Open the posting</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $$('[data-open]').forEach(b => b.onclick = () => openJob(rows[+b.dataset.open]));
+  $$('[data-save]').forEach(b => b.onclick = async () => {
+    const m = rows[+b.dataset.save];
+    try {
+      await post('/api/save/' + encodeURIComponent(m.id));
+      flash('Saved. It is on your Saved jobs board.', 'good');
+      loadMatches(); refresh();
+    } catch (e) { flash(e.message, 'bad'); }
+  });
+}
+
+function paintBands() {
+  $$('.band').forEach((x, i) => {
+    const on = x.dataset.band === BAND;
+    x.className = 'band px-3.5 py-1.5 transition ' + (i ? 'border-l border-white/10 ' : '') +
+      (on ? 'bg-white/12 text-white' : 'text-slate-400 hover:bg-white/5');
+  });
+}
+$$('.band').forEach(b => b.onclick = () => { BAND = b.dataset.band; paintBands(); renderMatches(); });
+$('#matchSearch').oninput = (e) => { SEARCH = e.target.value; renderMatches(); };
+
+$('#btnRefreshJobs').onclick = async () => {
+  const j = await runJob('discover', {});
+  if (j.state === 'done') { flash('Job list refreshed. Score them to see new matches.', 'good'); loadMatches(); }
+};
+$('#btnScoreMore').onclick = async () => {
+  const left = ME.quota.credits_left ?? ME.quota.runs_left ?? 0;
+  const limit = Math.min(ME.quota.max_scores_per_batch, left, 40);
+  if (limit < 1) { flash('You are out of credits this month.', 'bad'); showTab('plan'); return; }
+  const j = await runJob('score', { limit });
+  if (j.state === 'done') loadMatches();
+};
+$('#btnSaveStrong').onclick = () => saveStrong();
+
+async function saveStrong() {
+  try {
+    const r = await post('/api/shortlist', { min_score: 70, limit: 10 });
+    flash(r.added ? `${r.added} job(s) saved to your board.` : 'Nothing new to save.',
+          r.added ? 'good' : 'info');
+    loadMatches(); refresh();
+  } catch (e) { flash(e.message, 'bad'); }
+}
+
+/* ---------- why these results ---------- */
+$('#btnWhy').onclick = async () => {
+  const box = $('#whyBox');
+  if (!box.classList.contains('hidden')) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="card rounded-2xl p-5 text-sm text-slate-500">Checking…</div>';
+
+  let d;
+  try { d = await api('/api/diagnostics'); }
+  catch (e) { box.innerHTML = `<div class="card rounded-2xl p-5 text-sm text-rose-300">${esc(e.message)}</div>`; return; }
+
+  const total = d.total || 0;
+  const summary = d.all_scored
+    ? `You have scored all <b class="text-slate-200">${(d.postings_total || 0).toLocaleString()}</b>
+       openings we currently have — there is nothing left waiting. This check is free.`
+    : `Of the <b class="text-slate-200">${total.toLocaleString()}</b> openings not yet scored for you,
+       <b class="text-emerald-400">${(d.kept || 0).toLocaleString()}</b> fit what you asked for.
+       This check is free.`;
+
+  box.innerHTML = `
+    <div class="card rounded-2xl p-5">
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <h3 class="text-white font-medium">How your filters are working</h3>
+          <p class="text-sm text-slate-400 mt-1">${summary}</p>
+        </div>
+        <button id="whyClose" class="text-slate-500 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      ${(d.rejected || []).length ? `<div class="mt-4 space-y-2">
+        ${d.rejected.map(r => `
+          <div class="flex items-center gap-3 text-sm">
+            <div class="flex-1 text-slate-400">${esc(r.label)}</div>
+            <div class="w-32 h-1.5 rounded-full bg-white/8 overflow-hidden shrink-0">
+              <div class="h-full bg-slate-600" style="width:${total ? Math.round(r.count / total * 100) : 0}%"></div>
+            </div>
+            <div class="w-16 text-right text-slate-500 shrink-0">${r.count.toLocaleString()}</div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      ${(d.advice || []).length ? `<div class="mt-5 space-y-2.5">
+        ${d.advice.map(a => `
+          <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-4">
+            <div class="text-sm text-amber-100/90 leading-relaxed">${esc(a.problem)}</div>
+            <div class="text-sm text-slate-400 mt-1.5">${esc(a.fix)}</div>
+            ${a.action ? `<button data-fix="${esc(a.action)}"
+              class="mt-3 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/16 text-white text-xs font-medium transition">
+              ${a.action === 'discover' ? 'Search for openings' : 'Change my settings'}</button>` : ''}
+          </div>`).join('')}
+      </div>` : `<div class="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4 text-sm text-emerald-200/85">
+        Your filters look healthy — there is a good pool of relevant jobs to score.</div>`}
+
+      ${(d.right_role_wrong_place || []).length ? `<div class="mt-5">
+        <div class="text-xs uppercase tracking-wider text-slate-500">Right role, city you did not pick</div>
+        <div class="mt-2.5 space-y-1.5">
+          ${d.right_role_wrong_place.slice(0, 6).map(j => `
+            <div class="text-sm flex flex-wrap gap-x-2">
+              <span class="text-slate-300">${esc(j.title)}</span>
+              <span class="text-slate-600">${esc(j.company)}</span>
+              <span class="text-amber-400/80">${esc(j.location || '')}</span>
+            </div>`).join('')}
+        </div></div>` : ''}
+    </div>`;
+
+  $('#whyClose').onclick = () => box.classList.add('hidden');
+  $$('[data-fix]').forEach(b => b.onclick = () => {
+    if (b.dataset.fix === 'discover') { runJob('discover', {}).then(loadMatches); return; }
+    showTab('setup');
+    $('#stepRoles').scrollIntoView({ behavior: 'smooth' });
+  });
+};
+
+/* ------------------------------------------------------------------ */
+/* application drawer                                                  */
+/* ------------------------------------------------------------------ */
+const PACK = [
+  { key: 'tailor',   art: 'resume',     label: 'Resume',
+    blurb: 'Your resume reordered and rewritten for this specific posting, then checked line by line so it cannot claim anything you did not actually do.',
+    cta: 'Write my resume for this job', render: renderResume },
+  { key: 'outreach', art: 'outreach',   label: 'Messages',
+    blurb: 'A cover letter, a recruiter message short enough for LinkedIn, an email to the hiring manager, and the follow-up to send a week later.',
+    cta: 'Write my messages', render: renderOutreach, needs: 'tailor' },
+  { key: 'prep',     art: 'prep_brief', label: 'Interview',
+    blurb: 'The questions this posting invites, what each is really testing, and an honest list of where you will get caught out.',
+    cta: 'Prepare me for the interview', render: renderPrep },
+  { key: 'intel',    art: 'intel',      label: 'Company',
+    blurb: 'What they actually do, how their process usually runs, the risks worth knowing, and good questions to ask them.',
+    cta: 'Research this company', render: renderIntel },
+  { key: 'comp',     art: 'comp',       label: 'Salary',
+    blurb: 'A realistic band in LPA for this role at your experience level in this city, and a number to ask for.',
+    cta: 'Work out the salary band', render: renderComp },
+];
+
+let JOB = null, ART = {}, PACKTAB = 'tailor';
+
+async function openJob(m) {
+  JOB = m; ART = {}; PACKTAB = 'tailor';
+  $('#drawerTitle').textContent = m.title;
+  $('#drawerSub').textContent = `${m.company} · ${m.location || ''} · scored ${m.score}/100`;
+  $('#drawer').classList.remove('hidden');
+  $('#drawerBody').innerHTML = '<div class="text-slate-500">Loading…</div>';
+
+  // Anything already generated is fetched back rather than regenerated, so
+  // reopening a job never costs a credit.
+  await Promise.all(PACK.map(async p => {
+    try { ART[p.key] = (await api(`/api/artifact/${p.art}/${encodeURIComponent(m.id)}`)).payload; }
+    catch { ART[p.key] = null; }
+  }));
+  renderDrawer();
+}
+
+$('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
+
+function renderDrawer() {
+  const locked = new Set(ME.quota.blocked_agents || []);
+
+  $('#drawerTabs').innerHTML = PACK.map(p => {
+    const on = p.key === PACKTAB;
+    const done = !!ART[p.key];
+    return `<button data-ptab="${p.key}" class="px-3 py-2.5 border-b-2 whitespace-nowrap transition ${on
+      ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}">
+      ${esc(p.label)}
+      ${done ? '<span class="ml-1 text-emerald-400">&bull;</span>'
+             : locked.has(p.key) ? '<span class="ml-1 text-[10px] text-indigo-400">PRO</span>' : ''}
+    </button>`;
+  }).join('');
+  $$('[data-ptab]').forEach(b => b.onclick = () => { PACKTAB = b.dataset.ptab; renderDrawer(); });
+
+  const p = PACK.find(x => x.key === PACKTAB);
+  const data = ART[p.key];
+
+  if (data) {
+    $('#drawerBody').innerHTML = `
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <span class="text-emerald-400">${TICK}</span> Already prepared — reopening this costs nothing.
+        <button id="btnRegen" class="ml-auto text-slate-500 hover:text-slate-300 underline">Redo (1 credit)</button>
+      </div>
+      <div class="space-y-4">${p.render(data)}</div>`;
+    $('#btnRegen').onclick = () => generate(p);
+    wireCopies();
+    return;
+  }
+
+  const isLocked = locked.has(p.key);
+  const missingDep = p.needs && !ART[p.needs];
+  $('#drawerBody').innerHTML = `
+    <div class="card rounded-2xl p-6">
+      <h3 class="text-white font-medium">${esc(p.label)}</h3>
+      <p class="mt-2 text-sm text-slate-400 leading-relaxed">${esc(p.blurb)}</p>
+      ${isLocked ? `
+        <div class="mt-4 rounded-xl border border-indigo-500/30 bg-indigo-500/[0.08] p-4">
+          <div class="text-white text-sm font-medium">This one is on Pro</div>
+          <div class="text-sm text-indigo-200/80 mt-1">₹999 a month, bought one month at a time. No auto-debit.</div>
+          <button id="btnUp" class="mt-3 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium">See Pro</button>
+        </div>`
+      : missingDep ? `
+        <div class="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-amber-100/85">
+          Write the resume first — the messages are built from it so they stay consistent with
+          what you claimed.
+          <button id="btnDep" class="mt-3 block px-4 py-2 rounded-lg bg-white/10 hover:bg-white/16 text-white text-sm font-medium">Go to Resume</button>
+        </div>`
+      : `<button id="btnGen" class="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:from-indigo-400 hover:to-violet-500 transition">
+          ${esc(p.cta)} ${ARROW}</button>
+         <div class="mt-2 text-xs text-slate-500">Uses 1 credit.</div>`}
+    </div>`;
+
+  if ($('#btnGen')) $('#btnGen').onclick = () => generate(p);
+  if ($('#btnUp'))  $('#btnUp').onclick  = () => { $('#drawer').classList.add('hidden'); showTab('plan'); };
+  if ($('#btnDep')) $('#btnDep').onclick = () => { PACKTAB = 'tailor'; renderDrawer(); };
+}
+
+async function generate(p) {
+  const j = await runJob(p.key, { external_id: JOB.id });
+  if (j.state === 'done') {
+    ART[p.key] = j.result;
+    renderDrawer();
+    loadMatches();
+  }
+}
+
+function wireCopies() {
+  $$('[data-copy]').forEach(b => b.onclick = async () => {
+    const text = document.getElementById(b.dataset.copy)?.innerText || '';
+    try { await navigator.clipboard.writeText(text); flash('Copied.', 'good'); }
+    catch { flash('Your browser blocked the copy — select the text instead.', 'bad'); }
+  });
+  if ($('#btnDlResume')) $('#btnDlResume').onclick = () => {
+    const text = $('#resumeText').innerText;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    a.download = `resume-${(JOB.company || 'job').replace(/\W+/g, '-').toLowerCase()}.txt`;
+    a.click();
+  };
+}
+
+/* ---------- renderers ---------- */
+let blockId = 0;
+function block(title, body, copyable = true) {
+  const id = 'blk' + (++blockId);
+  return `<div>
+    <div class="flex items-center gap-2 mb-1.5">
+      <div class="text-xs uppercase tracking-wider text-slate-500">${esc(title)}</div>
+      ${copyable ? `<button data-copy="${id}" class="ml-auto text-xs text-slate-500 hover:text-indigo-300">Copy</button>` : ''}
+    </div>
+    <div id="${id}" class="rounded-xl bg-black/30 border border-white/8 p-4 whitespace-pre-wrap text-slate-300 leading-relaxed">${esc(body)}</div>
+  </div>`;
+}
+
+function renderResume(r) {
+  const v = r.violations || [], res = r.resume;
+  const text = [res.headline, '', res.summary, '',
+    ...res.bullets.map(b => '• ' + b.text), '',
+    'Skills: ' + (res.skills_line || []).join(', ')].join('\n');
+  return `
+    ${v.length ? `<div class="rounded-xl border border-rose-500/30 bg-rose-500/[0.08] p-4">
+        <div class="text-rose-200 font-medium text-sm">Do not send this yet — ${v.length} problem(s) found</div>
+        <ul class="mt-2 space-y-1 text-rose-200/80 text-xs">${v.map(x => `<li>· ${esc(x)}</li>`).join('')}</ul>
+        <div class="text-xs text-rose-200/60 mt-2.5 leading-relaxed">Either the AI reached beyond your
+        history, or your resume is missing the achievement it drew on. Add the detail and redo it.</div></div>`
+      : `<div class="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-3.5 flex gap-2.5 text-emerald-200/90 text-sm">
+         <span class="shrink-0">${TICK}</span>
+         <span>Checked: every line traces back to something in your own history.</span></div>`}
+
+    <div class="flex gap-2">
+      <button data-copy="resumeText" class="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:bg-white/5">Copy all</button>
+      <button id="btnDlResume" class="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:bg-white/5">Download .txt</button>
+    </div>
+
+    <div id="resumeText" class="rounded-xl bg-black/30 border border-white/8 p-5">
+      <div class="text-white font-medium">${esc(res.headline)}</div>
+      <p class="text-slate-400 mt-2 leading-relaxed">${esc(res.summary)}</p>
+      <ul class="mt-4 space-y-3">${res.bullets.map(b => `<li>
+        <div class="text-slate-200 leading-relaxed">• ${esc(b.text)}</div>
+        <div class="text-xs text-slate-600 mt-1 ml-3">based on: ${esc(b.source_achievement)}</div></li>`).join('')}</ul>
+      <div class="text-sm text-slate-500 mt-4">Skills: ${(res.skills_line || []).map(esc).join(', ')}</div>
+    </div>`;
+}
+
+function renderOutreach(p) {
+  return block('Cover letter', p.cover_letter)
+    + block(`Recruiter message (${(p.recruiter_dm || '').length} characters)`, p.recruiter_dm)
+    + block('Email to the hiring manager — subject: ' + (p.hm_email_subject || ''), p.hm_email)
+    + block('Follow-up, send in 5 to 7 days', p.followup_message);
+}
+
+function renderPrep(b) {
+  return `
+    ${(b.weak_spots || []).length ? `<div class="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-4">
+      <div class="text-xs uppercase tracking-wider text-rose-400">Where you will get caught out</div>
+      <ul class="mt-2 space-y-1.5 text-slate-300 text-sm">${b.weak_spots.map(w => `<li>· ${esc(w)}</li>`).join('')}</ul>
+    </div>` : ''}
+    ${(b.likely_questions || []).map(q => `
+      <div class="rounded-xl bg-black/25 border border-white/8 p-4">
+        <div class="text-slate-100">${esc(q.question)}</div>
+        <div class="text-xs text-slate-500 mt-1">Really testing: ${esc(q.why_asked)}</div>
+        <div class="text-sm text-slate-400 mt-2 leading-relaxed">${esc(q.answer_outline)}</div>
+      </div>`).join('')}
+    ${(b.star_stories || []).length ? `<div>
+      <div class="text-xs uppercase tracking-wider text-slate-500 mb-2">Stories to have ready</div>
+      ${b.star_stories.map(s => `<div class="rounded-xl bg-black/25 border border-white/8 p-4 mb-2">
+        <div class="text-slate-200 text-sm">${esc(s.prompt || s.title || '')}</div>
+        <div class="text-sm text-slate-400 mt-1.5 leading-relaxed">${esc(
+          [s.situation, s.task, s.action, s.result].filter(Boolean).join(' '))}</div>
+      </div>`).join('')}</div>` : ''}`;
+}
+
+function renderIntel(i) {
+  return `<div class="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs text-amber-200/85">
+      Confidence: ${esc(i.confidence)}. Check anything time-sensitive yourself before an interview.</div>
+    ${block('What they do', i.what_they_do)}
+    ${(i.likely_interview_process || []).length ? block('How their process usually runs', i.likely_interview_process.join('\n')) : ''}
+    ${(i.risks || []).length ? block('Worth knowing', i.risks.join('\n')) : ''}
+    ${(i.questions_to_ask_them || []).length ? block('Ask them this', i.questions_to_ask_them.join('\n')) : ''}`;
+}
+
+function renderComp(c) {
+  return `
+    <div class="rounded-xl bg-black/30 border border-white/8 p-5">
+      <div class="text-xs uppercase tracking-wider text-slate-500">Likely base</div>
+      <div class="text-2xl font-semibold text-white mt-1">${c.base_low}–${c.base_high}
+        <span class="text-base text-slate-500">${esc(c.unit)}</span></div>
+      <div class="text-sm text-slate-400 mt-2">Total package ${c.total_low}–${c.total_high} ${esc(c.unit)}</div>
+      <div class="mt-4 pt-4 border-t border-white/8">
+        <div class="text-xs uppercase tracking-wider text-slate-500">What to ask for</div>
+        <div class="text-xl font-semibold text-emerald-300 mt-1">${c.recommended_ask} ${esc(c.unit)}</div>
+      </div>
+      <div class="text-xs text-slate-500 mt-4 leading-relaxed">Confidence ${esc(c.confidence)} — ${esc(c.basis)}</div>
+    </div>
+    ${c.confidence === 'low' ? `<div class="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3.5 text-sm text-amber-200/85 leading-relaxed">
+      Treat this as a starting assumption, not market data. Cross-check on AmbitionBox or
+      Levels.fyi before you say a number out loud.</div>` : ''}`;
+}
+</script>
+
+
+<script>
+/* ------------------------------------------------------------------ */
+/* saved jobs                                                          */
+/* ------------------------------------------------------------------ */
+const STAGE_LABEL = {
+  shortlisted: 'Saved', tailored: 'Resume ready', applied: 'Applied',
+  screen: 'Recruiter screen', interview: 'Interview', onsite: 'Final round',
+  offer: 'Offer', accepted: 'Accepted', rejected: 'Rejected', ghosted: 'No response',
+};
+/* A function declaration, not a const arrow: the match cards in the previous
+   script block call this, and a hoisted declaration is available to them
+   regardless of which block finished parsing first. */
+function stageLabel(s) { return STAGE_LABEL[s] || s; }
+
+async function loadSaved() {
+  let p;
+  try { p = await api('/api/pipeline'); } catch (e) { flash(e.message, 'bad'); return; }
+
+  const alerts = [];
+  if (p.needs_followup.length) alerts.push({
+    tone: 'amber',
+    title: `Follow up on ${p.needs_followup.length} application${p.needs_followup.length > 1 ? 's' : ''} today`,
+    body: 'They have been sitting at the same stage long enough that a short, polite nudge is normal and expected.',
+  });
+  if (p.ghosts.length) alerts.push({
+    tone: 'rose',
+    title: `${p.ghosts.length} have almost certainly gone quiet`,
+    body: 'Stop waiting on these. Move them out and put the effort into new applications.',
+  });
+  if (p.rates.callback_rate_pct !== null) alerts.push({
+    tone: 'slate',
+    title: `${p.rates.callback_rate_pct}% of your applications got a reply`,
+    body: p.rates.callback_rate_pct < 10
+      ? 'Under 10% usually means the applications are going to jobs that were never a fit. Aim higher up the score list.'
+      : 'That is a healthy rate. Keep the volume steady rather than raising it.',
+  });
+
+  $('#savedAlerts').innerHTML = alerts.map(a => `
+    <div class="rounded-xl border p-4 ${a.tone === 'amber' ? 'border-amber-500/25 bg-amber-500/[0.06]'
+      : a.tone === 'rose' ? 'border-rose-500/25 bg-rose-500/[0.06]' : 'card'}">
+      <div class="text-white text-sm font-medium">${esc(a.title)}</div>
+      <div class="text-sm text-slate-400 mt-1 leading-relaxed">${esc(a.body)}</div>
+    </div>`).join('');
+
+  const active = Object.entries(p.funnel).filter(([, v]) => v);
+  $('#funnelRow').innerHTML = active.length ? active.map(([k, v]) => `
+    <div class="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
+      <div class="text-xl font-semibold text-white">${v}</div>
+      <div class="text-xs text-slate-500 mt-0.5">${esc(stageLabel(k))}</div>
+    </div>`).join('') : '';
+
+  $('#appList').innerHTML = p.applications.length ? p.applications.map(a => `
+    <div class="card rounded-xl p-4 flex flex-wrap items-center gap-3">
+      <div class="shrink-0 w-10 text-center">
+        <span class="text-sm font-semibold ${a.score >= 70 ? 'text-emerald-400' : a.score >= 55 ? 'text-amber-400' : 'text-slate-500'}">${a.score ?? '—'}</span>
+      </div>
+      <div class="flex-1 min-w-[180px]">
+        <div class="text-sm text-white">${esc(a.title)}</div>
+        <div class="text-xs text-slate-500 mt-0.5">${esc(a.company)} ·
+          ${a.days} day${a.days === 1 ? '' : 's'} at "${esc(stageLabel(a.stage))}"
+          ${p.needs_followup.includes(a.id) ? '<span class="text-amber-400"> · follow up</span>' : ''}
+          ${p.ghosts.includes(a.id) ? '<span class="text-rose-400"> · gone quiet</span>' : ''}</div>
+      </div>
+      <a href="${esc(a.url)}" target="_blank" rel="noopener" class="text-xs text-slate-500 hover:text-slate-300">Posting</a>
+      <select data-stage="${esc(a.id)}"
+        class="bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500/60">
+        ${p.stages.map(s => `<option value="${esc(s)}" ${s === a.stage ? 'selected' : ''}>${esc(stageLabel(s))}</option>`).join('')}
+      </select>
+    </div>`).join('')
+    : `<div class="card rounded-2xl p-8 text-center">
+        <div class="text-slate-400">Nothing saved yet.</div>
+        <button onclick="showTab('matches')" class="mt-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium">Go to your matches</button>
+       </div>`;
+
+  $$('[data-stage]').forEach(sel => sel.onchange = async () => {
+    try { await post('/api/stage/' + encodeURIComponent(sel.dataset.stage), { to: sel.value }); }
+    catch (e) { flash(e.message, 'bad'); }
+    loadSaved(); refresh();
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* plan & credits                                                      */
+/* ------------------------------------------------------------------ */
+const AGENT_LABEL = {
+  skill_graph: 'Reading your resume', gap_analysis: 'Readiness checks',
+  fit_scoring: 'Scoring jobs', resume_tailoring: 'Resume rewrites',
+  outreach: 'Messages', interview_prep: 'Interview prep',
+  company_intel: 'Company briefings', compensation: 'Salary bands',
+  intake: 'Reading your resume',
+};
+
 async function loadPlan() {
   const u = await api('/api/usage');
   const q = u.quota;
-  const pct = q.runs_limit ? Math.round(q.runs_used / q.runs_limit * 100) : 0;
+  const used = q.credits_used ?? q.runs_used, lim = q.credits_limit ?? q.runs_limit;
+  const pct = lim ? Math.round(used / lim * 100) : 0;
 
   $('#quotaBox').innerHTML = `
-    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
-      <div class="flex items-baseline gap-2">
-        <div class="text-xl font-medium text-white">${esc(q.plan_name)}</div>
-        ${q.price_inr ? `<div class="text-sm text-slate-400">₹${q.price_inr}/month</div>` : ''}
+    <div class="card rounded-2xl p-6">
+      <div class="flex flex-wrap items-baseline gap-2.5">
+        <span class="text-xl font-medium text-white">${esc(q.plan_name)}</span>
+        ${q.price_inr ? `<span class="text-sm text-slate-500">₹${q.price_inr} a month</span>` : ''}
       </div>
-      <div class="mt-3 text-sm text-slate-300">${q.runs_used} of ${q.runs_limit} agent runs used
-        <span class="text-slate-500">· ${q.runs_left} left · resets ${esc(q.resets_on)}</span></div>
-      <div class="mt-2 h-2 bg-slate-800 rounded overflow-hidden">
-        <div class="h-full ${pct > 85 ? 'bg-rose-500' : 'bg-emerald-500'}" style="width:${pct}%"></div></div>
-      <p class="text-xs text-slate-500 mt-3">
-        One run is one agent call. Discovery is free and never counts against this.
-      </p>
+      <div class="mt-4 flex items-baseline gap-2">
+        <span class="text-3xl font-semibold text-white">${Math.max(0, lim - used)}</span>
+        <span class="text-slate-500">of ${lim} credits left</span>
+      </div>
+      <div class="mt-3 h-2 bg-white/8 rounded-full overflow-hidden">
+        <div class="h-full ${pct > 90 ? 'bg-rose-500' : pct > 65 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width:${pct}%"></div>
+      </div>
+      <div class="mt-2.5 text-sm text-slate-500">Resets on ${esc(q.resets_on)}. Searching for jobs never uses credits.</div>
     </div>`;
 
-  const cfg = await api('/api/config');
-  $('#upgradeBox').innerHTML = q.plan === 'pro' ? `
-    <div class="sm:col-span-2 rounded-lg border border-indigo-800 bg-indigo-950/20 p-4 text-sm">
-      <div class="text-white font-medium">You are on Pro</div>
-      <div class="text-slate-400 mt-1">All agents unlocked. Extend any time — added months
-      stack on top of what you already have rather than replacing it.</div>
-      <button id="btnBuy" class="mt-3 px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">Add a month</button>
-    </div>` : cfg.plans.filter(p => p.key === 'pro').map(p => `
-    <div class="sm:col-span-2 rounded-lg border border-indigo-700 bg-indigo-950/20 p-5">
-      <div class="flex items-baseline gap-2">
-        <div class="text-lg font-medium text-white">Upgrade to Pro</div>
-        <div class="text-slate-400">₹${p.price_inr}/month</div></div>
-      <ul class="mt-3 space-y-1 text-sm text-slate-300">
-        ${p.features.map(f => `<li>· ${esc(f)}</li>`).join('')}</ul>
-      <button id="btnBuy" class="mt-4 px-4 py-2.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium">
-        Subscribe — ₹${p.price_inr}</button>
-      ${cfg.billing_configured ? '' :
-        '<div class="text-xs text-amber-400 mt-2">Payments are not configured on this deployment yet.</div>'}
-    </div>`).join('');
+  const cfg = CFG || await api('/api/config');
+  const pro = cfg.plans.find(p => p.key === 'pro');
 
+  $('#upgradeBox').innerHTML = q.plan === 'pro' ? `
+    <div class="rounded-2xl border border-indigo-500/30 bg-indigo-500/[0.07] p-6">
+      <div class="text-white font-medium">You are on Pro</div>
+      <p class="text-sm text-slate-400 mt-1.5 leading-relaxed">
+        Everything is unlocked. Nothing renews automatically — add a month whenever you want
+        and it stacks onto the end of what you already have.
+      </p>
+      <button id="btnBuy" class="mt-4 px-4 py-2.5 rounded-xl bg-white/12 hover:bg-white/18 text-white text-sm font-medium transition">Add another month</button>
+    </div>` : `
+    <div class="rounded-2xl border-2 border-indigo-500/35 bg-indigo-500/[0.07] p-6">
+      <div class="flex flex-wrap items-baseline gap-2.5">
+        <span class="text-lg font-medium text-white">Upgrade to Pro</span>
+        <span class="text-slate-400">₹${pro.price_inr} a month · ${pro.credits} credits</span>
+      </div>
+      <ul class="mt-4 space-y-2 text-sm">
+        ${pro.features.map(f => `<li class="flex gap-2.5 text-indigo-100/90">
+          <span class="text-indigo-400 shrink-0">${TICK}</span><span>${esc(f)}</span></li>`).join('')}
+      </ul>
+      <button id="btnBuy" class="mt-5 px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-medium hover:from-indigo-400 hover:to-violet-500 transition">
+        Upgrade — ₹${pro.price_inr}</button>
+      <div class="mt-2.5 text-xs text-slate-500">
+        One month, no auto-debit. UPI, card, net banking or wallet.
+        <a href="/refunds" class="underline hover:text-slate-300">Refund policy</a>.
+      </div>
+      ${cfg.billing_configured ? '' :
+        '<div class="mt-3 text-xs text-amber-400">Payments are not switched on for this deployment yet.</div>'}
+    </div>`;
   if ($('#btnBuy')) $('#btnBuy').onclick = startCheckout;
 
-  $('#usageBox').innerHTML = u.by_agent.length ? `<table class="w-full text-sm">
-    <thead class="text-xs text-slate-500 text-left"><tr><th class="py-1">agent</th>
-    <th class="text-right">runs</th><th class="text-right">in</th><th class="text-right">out</th></tr></thead>
-    <tbody>${u.by_agent.map(r => `<tr class="border-t border-slate-800">
-      <td class="py-1.5 text-slate-300">${esc(r.agent)}</td>
-      <td class="text-right">${r.runs}</td>
-      <td class="text-right text-slate-500">${(r.input_tokens||0).toLocaleString()}</td>
-      <td class="text-right text-slate-500">${(r.output_tokens||0).toLocaleString()}</td>
-    </tr>`).join('')}</tbody></table>`
-    : '<div class="text-sm text-slate-500">No agent runs yet.</div>';
+  $('#usageBox').innerHTML = u.by_agent.length ? `
+    <div class="space-y-2">${u.by_agent.map(r => `
+      <div class="flex items-center gap-3 text-sm">
+        <div class="flex-1 text-slate-300">${esc(AGENT_LABEL[r.agent] || r.agent)}</div>
+        <div class="text-slate-500">${r.runs} credit${r.runs === 1 ? '' : 's'}</div>
+      </div>`).join('')}</div>`
+    : '<div class="text-sm text-slate-500">Nothing used yet this month.</div>';
 
   const h = await api('/api/billing/history');
   $('#paymentsBox').innerHTML = h.payments.length
-    ? h.payments.map(p => `<div class="border-t border-slate-800 py-1.5">
-        ₹${(p.amount_paise / 100).toFixed(0)} · ${esc(p.plan)} · ${p.months} month(s)
-        · <span class="text-slate-500">${esc(p.status)} · ${esc(String(p.created_at).slice(0, 16))}</span></div>`).join('')
+    ? h.payments.map(p => `<div class="border-t border-white/8 py-2.5 flex flex-wrap gap-x-3 text-sm">
+        <span class="text-slate-200">₹${(p.amount_paise / 100).toFixed(0)}</span>
+        <span class="text-slate-500">${esc(p.plan)} · ${p.months} month${p.months === 1 ? '' : 's'}</span>
+        <span class="text-slate-600">${esc(p.status)}</span>
+        <span class="text-slate-600">${esc(String(p.created_at).slice(0, 10))}</span>
+        <span class="mono text-slate-700 ml-auto">${esc(p.payment_id || '')}</span>
+      </div>`).join('')
     : 'No payments yet.';
 }
 
 async function startCheckout() {
   let order;
   try { order = await post('/api/billing/checkout', { plan: 'pro', months: 1 }); }
-  catch (e) { alert(e.message); return; }
+  catch (e) { flash(e.message, 'bad'); return; }
 
-  const rzp = new Razorpay({
+  new Razorpay({
     key: order.key_id,
     amount: order.amount_paise,
     currency: order.currency,
@@ -637,165 +1460,24 @@ async function startCheckout() {
     description: 'Pro — 1 month',
     order_id: order.order_id,
     prefill: { email: ME?.email || '', name: ME?.display_name || '' },
-    theme: { color: '#4f46e5' },
+    theme: { color: '#6366f1' },
     handler: async (res) => {
       try {
         await post('/api/billing/confirm', { ...res, plan: order.plan, months: order.months });
-        alert('You are on Pro. All agents are unlocked.');
+        flash('You are on Pro. Everything is unlocked.', 'good');
         await refresh(); loadPlan();
       } catch (e) {
-        // The webhook is the backstop, so a failure here is not lost money.
-        alert('Payment went through but confirming it failed: ' + e.message +
-              '\nIt will be applied automatically within a few minutes.');
+        // The Razorpay webhook is the backstop, so a failure here is not lost money.
+        flash('Payment went through but confirming it here failed. It will apply automatically within a few minutes.', 'bad');
       }
     },
-  });
-  rzp.open();
+  }).open();
 }
 
-/* ---------------- matches ---------------- */
-async function loadMatches() {
-  const { matches } = await api('/api/matches?limit=40&min_score=' + (+$('#minScore').value || 0));
-  const locked = new Set(ME?.quota?.blocked_agents || []);
-  const btn = (act, label, primary) => `<button data-act="${act}" class="act px-2.5 py-1.5 rounded text-xs
-    ${primary ? 'bg-indigo-600 hover:bg-indigo-500 text-white font-medium' : 'bg-slate-700 hover:bg-slate-600'}
-    ${locked.has(act) ? 'opacity-50' : ''}">${label}${locked.has(act) ? ' · Pro' : ''}</button>`;
-
-  $('#matchList').innerHTML = matches.length ? matches.map(m => {
-    const colour = m.score >= 70 ? 'text-emerald-400' : m.score >= 55 ? 'text-amber-400' : 'text-slate-500';
-    return `<div class="rounded-lg border border-slate-800 bg-slate-900/40 p-4" data-id="${esc(m.id)}">
-      <div class="flex items-start gap-3">
-        <div class="text-2xl font-semibold ${colour} w-12 text-right">${m.score}</div>
-        <div class="flex-1 min-w-0">
-          <div class="text-white text-sm font-medium">${esc(m.title)}</div>
-          <div class="text-xs text-slate-500">${esc(m.company)} · ${esc(m.location || '—')}
-            ${m.stage ? `· <span class="text-indigo-400">${esc(m.stage)}</span>` : ''}</div>
-          <div class="text-sm text-slate-400 mt-2">${esc(m.reasoning)}</div>
-          ${m.missing.length ? `<div class="text-xs text-rose-400/70 mt-1.5">missing: ${m.missing.slice(0,6).map(esc).join(', ')}</div>` : ''}
-          <div class="mt-3 flex flex-wrap gap-2">
-            ${btn('tailor', 'Tailor resume', true)}${btn('outreach', 'Outreach')}
-            ${btn('prep', 'Interview prep')}${btn('intel', 'Company intel')}${btn('comp', 'Salary band')}
-            <a href="${esc(m.url)}" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded border border-slate-700 text-xs hover:bg-slate-800">Open posting</a>
-          </div>
-        </div></div></div>`;
-  }).join('') : '<div class="text-sm text-slate-500">Nothing scored yet — run step 4.</div>';
-
-  const RENDER = { tailor: renderResume, outreach: renderOutreach, prep: renderPrep,
-                   intel: renderIntel, comp: renderComp };
-  const TITLE = { tailor: 'Tailored resume', outreach: 'Outreach pack', prep: 'Interview prep',
-                  intel: 'Company briefing', comp: 'Salary band' };
-  document.querySelectorAll('.act').forEach(b => b.onclick = async () => {
-    const id = b.closest('[data-id]').dataset.id;
-    try {
-      const j = await runJob(b.dataset.act, { external_id: id });
-      if (j.state === 'done') openDrawer(TITLE[b.dataset.act], RENDER[b.dataset.act](j.result));
-      if (j.state !== 'blocked') loadMatches();
-    } catch (e) { alert(e.message); }
-  });
-}
-$('#minScore').onchange = loadMatches;
-$('#btnShortlist').onclick = async () => {
-  const r = await post('/api/shortlist', { min_score: 70, limit: 10 });
-  alert(`${r.added} job(s) added to your pipeline.`);
-  loadMatches(); refresh();
-};
-
-/* ---------------- renderers ---------------- */
-function renderResume(r) {
-  const v = r.violations || [], res = r.resume;
-  return `${v.length ? `<div class="rounded border border-rose-900 bg-rose-950/40 p-3">
-      <div class="text-rose-300 font-medium">Fabrication check failed — ${v.length} issue(s)</div>
-      <ul class="mt-2 space-y-1 text-rose-200/80 text-xs">${v.map(x => `<li>• ${esc(x)}</li>`).join('')}</ul>
-      <div class="text-xs text-rose-200/60 mt-2">Do not send this. Either the model invented
-      something, or your brag document is missing the achievement it drew on.</div></div>`
-    : `<div class="rounded border border-emerald-900 bg-emerald-950/30 p-3 text-emerald-300 text-xs">
-       Fabrication check passed — every bullet traces to a real achievement.</div>`}
-    <div class="text-white font-medium">${esc(res.headline)}</div>
-    <p class="text-slate-400">${esc(res.summary)}</p>
-    <ul class="space-y-2">${res.bullets.map(b => `<li>
-      <div class="text-slate-200">• ${esc(b.text)}</div>
-      <div class="text-xs text-slate-600 ml-3">from: ${esc(b.source_achievement)}</div></li>`).join('')}</ul>
-    <div class="text-xs text-slate-500">Skills: ${(res.skills_line||[]).map(esc).join(', ')}</div>`;
-}
-function block(t, b) {
-  return `<div><div class="text-xs uppercase tracking-wide text-slate-500 mb-1">${esc(t)}</div>
-    <div class="rounded bg-slate-950/60 border border-slate-800 p-3 whitespace-pre-wrap text-slate-300">${esc(b)}</div></div>`;
-}
-function renderOutreach(p) {
-  return block('Cover letter', p.cover_letter)
-    + block(`Recruiter DM (${(p.recruiter_dm||'').length} chars)`, p.recruiter_dm)
-    + block('Hiring manager email — ' + p.hm_email_subject, p.hm_email)
-    + block('Follow-up (after 5-7 days)', p.followup_message);
-}
-function renderPrep(b) {
-  return `<div><div class="text-xs uppercase tracking-wide text-rose-400 mb-1">Where you will get caught out</div>
-    <ul class="space-y-1 text-slate-300">${(b.weak_spots||[]).map(w => `<li>• ${esc(w)}</li>`).join('')}</ul></div>
-    ${(b.likely_questions||[]).map(q => `<div>
-      <div class="text-slate-200">${esc(q.question)} <span class="text-xs text-slate-600">[${esc(q.kind)}]</span></div>
-      <div class="text-xs text-slate-500 mt-0.5">Really testing: ${esc(q.why_asked)}</div>
-      <div class="text-xs text-slate-400 mt-1">${esc(q.answer_outline)}</div></div>`).join('')}`;
-}
-function renderIntel(i) {
-  return `<div class="text-xs text-amber-400">Confidence: ${esc(i.confidence)} — verify anything
-    time-sensitive yourself.</div>${block('What they do', i.what_they_do)}
-    ${(i.likely_interview_process||[]).length ? block('Likely process', i.likely_interview_process.join('\n')) : ''}
-    ${(i.risks||[]).length ? block('Risks', i.risks.join('\n')) : ''}
-    ${(i.questions_to_ask_them||[]).length ? block('Ask them', i.questions_to_ask_them.join('\n')) : ''}`;
-}
-function renderComp(c) {
-  return `<div class="text-lg text-white">${c.base_low}–${c.base_high} ${esc(c.unit)}
-    <span class="text-sm text-slate-500">base</span></div>
-    <div class="text-slate-300">Total ${c.total_low}–${c.total_high} ${esc(c.unit)}</div>
-    <div class="text-white">Ask: <b>${c.recommended_ask} ${esc(c.unit)}</b></div>
-    <div class="text-xs text-slate-500">Confidence ${esc(c.confidence)} — ${esc(c.basis)}</div>
-    ${c.confidence === 'low' ? `<div class="text-xs text-amber-400">Treat this as a prior, not market
-    data. Cross-check on Levels.fyi or AmbitionBox before quoting a number.</div>` : ''}`;
-}
-
-/* ---------------- pipeline ---------------- */
-async function loadPipeline() {
-  const p = await api('/api/pipeline');
-  $('#funnelRow').innerHTML = Object.entries(p.funnel).filter(([, v]) => v).map(([k, v]) =>
-    `<div class="px-3 py-2 rounded bg-slate-900 border border-slate-800">
-      <div class="text-lg font-semibold text-white">${v}</div>
-      <div class="text-xs text-slate-500">${esc(k)}</div></div>`).join('')
-    || '<div class="text-sm text-slate-500">Pipeline is empty — shortlist some matches.</div>';
-
-  $('#ratesBox').innerHTML = p.rates.callback_rate_pct !== null
-    ? `Callback rate: <b class="text-white">${p.rates.callback_rate_pct}%</b>`
-    : `<span class="text-slate-500">${p.rates.applied_total} applications — a rate needs 10+ to mean anything.</span>`;
-
-  $('#appList').innerHTML = p.applications.map(a => `
-    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3 flex items-center gap-3">
-      <div class="text-sm text-slate-500 w-8 text-right">${a.score ?? '—'}</div>
-      <div class="flex-1 min-w-0">
-        <div class="text-sm text-white truncate">${esc(a.title)}</div>
-        <div class="text-xs text-slate-500">${esc(a.company)} · ${a.days}d in ${esc(a.stage)}
-          ${p.needs_followup.includes(a.id) ? '<span class="text-amber-400">· follow up</span>' : ''}
-          ${p.ghosts.includes(a.id) ? '<span class="text-rose-400">· likely ghosted</span>' : ''}</div>
-      </div>
-      <select data-stage="${esc(a.id)}" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs">
-        ${p.stages.map(s => `<option ${s === a.stage ? 'selected' : ''}>${s}</option>`).join('')}
-      </select></div>`).join('');
-
-  document.querySelectorAll('[data-stage]').forEach(sel => sel.onchange = async () => {
-    try { await post('/api/stage/' + sel.dataset.stage, { to: sel.value }); }
-    catch (e) { alert(e.message); }
-    loadPipeline(); refresh();
-  });
-}
-
-/* ---------------- settings ---------------- */
+/* ------------------------------------------------------------------ */
+/* companies + raw rules                                               */
+/* ------------------------------------------------------------------ */
 const lines = (el) => el.value.split('\n').map(s => s.trim()).filter(Boolean);
-$('#btnSaveTargets').onclick = async () => {
-  await post('/api/settings/targets', { config: {
-    title_include: lines($('#tInclude')), title_exclude: lines($('#tExclude')),
-    locations: lines($('#tLocations')), remote_ok: true, min_description_chars: 300,
-    constraints: { years_of_experience: +$('#tYoe').value || 0,
-                   minimum_salary_inr_lpa: +$('#tSalary').value || 0 },
-  }});
-  alert('Filters saved. They apply on your next scoring run.');
-};
 
 async function loadBoards() {
   const b = await api('/api/settings/companies');
@@ -807,46 +1489,67 @@ async function loadBoards() {
     const search = Array.isArray(w.search) ? w.search.join(';') : (w.search || '');
     return `${w.tenant}|${w.wd}|${w.site}|${search}`;
   }).join('\n');
+
+  const count = Object.values(c).reduce((n, v) => n + v.length, 0);
   $('#boardsStatus').innerHTML = b.is_custom
-    ? '<span class="text-emerald-400">Using your own company list.</span>'
-    : '<span class="text-slate-400">Using the default list. Edit and save to make it yours.</span>';
+    ? `<span class="text-emerald-400">Using your own list — ${count} companies.</span>`
+    : `<span class="text-slate-400">Using our default list of ${count} companies hiring in India. Edit and save to make it yours.</span>`;
+
+  const s = await api('/api/setup');
+  $('#tInclude').value = (s.title_include || []).join('\n');
+  $('#tExclude').value = (s.title_exclude || []).join('\n');
 }
+
 $('#btnSaveBoards').onclick = async () => {
   const workday = lines($('#bWorkday')).map(row => {
     const [tenant, wd, site, search] = row.split('|').map(s => (s || '').trim());
     if (!tenant || !wd || !site) return null;
     return { tenant, wd, site, max: 40,
-             search: (search || '').split(';').map(s => s.trim()).filter(Boolean) };
+             search: (search || '').split(';').map(x => x.trim()).filter(Boolean) };
   }).filter(Boolean);
   try {
     const r = await post('/api/settings/companies', { companies: {
       greenhouse: lines($('#bGreenhouse')), lever: lines($('#bLever')),
       ashby: lines($('#bAshby')), workday } });
-    alert(`Saved ${r.boards} board(s). Run "Find jobs" to pull from them.`);
+    flash(`Saved ${r.boards} companies. Search for openings to pull from them.`, 'good');
     loadBoards();
-  } catch (e) { alert(e.message); }
+  } catch (e) { flash(e.message, 'bad'); }
 };
 $('#btnResetBoards').onclick = async () => {
   await api('/api/settings/companies', { method: 'DELETE' });
+  flash('Back to the default company list.');
   loadBoards();
 };
 
-/* ---------------- admin ---------------- */
+$('#btnSaveRules').onclick = async () => {
+  // Sends only the two lists. The server merges them into the saved config, so
+  // hand-editing titles cannot wipe the cities or the constraints along with them.
+  try {
+    await post('/api/settings/rules', {
+      title_include: lines($('#tInclude')),
+      title_exclude: lines($('#tExclude')),
+    });
+    flash('Saved. These rules apply on your next scoring run.', 'good');
+    loadBoards();
+  } catch (e) { flash(e.message, 'bad'); }
+};
+
+/* ------------------------------------------------------------------ */
+/* admin                                                               */
+/* ------------------------------------------------------------------ */
 async function loadAdmin() {
   const o = await api('/api/admin/overview');
-  const card = (label, value, sub, accent) => `
-    <div class="rounded-lg border ${accent ? 'border-emerald-900 bg-emerald-950/20' : 'border-slate-800 bg-slate-900/40'} p-4">
-      <div class="text-2xl font-semibold text-white">${value}</div>
-      <div class="text-xs text-slate-500 mt-0.5">${esc(label)}</div>
+  const card = (l, v, sub, accent) => `
+    <div class="rounded-xl border ${accent ? 'border-emerald-500/25 bg-emerald-500/[0.05]' : 'border-white/8 bg-white/[0.02]'} p-4">
+      <div class="text-2xl font-semibold text-white">${v}</div>
+      <div class="text-xs text-slate-500 mt-0.5">${esc(l)}</div>
       ${sub ? `<div class="text-xs text-slate-600 mt-1">${esc(sub)}</div>` : ''}</div>`;
 
   $('#adminCards').innerHTML =
     card('total users', o.users.total, `${o.users.new_7d} new this week`) +
     card('active (24h)', o.users.active_24h, `${o.users.disabled} disabled`) +
-    card('shared postings', o.shared.postings.toLocaleString(),
-         `${o.shared.company_intel_cached} briefings cached`) +
-    card('agent runs', o.usage.llm_calls.toLocaleString(),
-         `$${o.usage.model_cost_usd} model cost — yours now`);
+    card('shared postings', o.shared.postings.toLocaleString(), `${o.shared.company_intel_cached} briefings cached`) +
+    card('AI calls', o.usage.llm_calls.toLocaleString(), `$${o.usage.model_cost_usd} model cost`);
 
   const rev = o.revenue;
   $('#adminRevenue').innerHTML =
@@ -854,13 +1557,13 @@ async function loadAdmin() {
     card('MRR', '₹' + rev.mrr_inr.toLocaleString(), 'subscribers × ₹999', true) +
     card('collected', '₹' + rev.total_collected_inr.toLocaleString(), 'all time', true) +
     card('gross margin', rev.mrr_inr
-      ? Math.round((1 - (o.usage.model_cost_usd * 88) / rev.mrr_inr) * 100) + '%'
-      : '—', 'revenue less model cost', true);
+      ? Math.round((1 - (o.usage.model_cost_usd * 88) / rev.mrr_inr) * 100) + '%' : '—',
+      'revenue less model cost', true);
 
   $('#adminFunnel').innerHTML = o.funnel.map(f => `
     <div class="flex items-center gap-3 text-sm">
-      <div class="w-40 text-slate-400 shrink-0">${esc(f.step)}</div>
-      <div class="flex-1 h-5 bg-slate-800 rounded overflow-hidden">
+      <div class="w-44 text-slate-400 shrink-0">${esc(f.step)}</div>
+      <div class="flex-1 h-5 bg-white/8 rounded overflow-hidden">
         <div class="h-full bg-indigo-600" style="width:${f.pct}%"></div></div>
       <div class="w-24 text-right text-slate-300">${f.users} <span class="text-slate-600">${f.pct}%</span></div>
     </div>`).join('');
@@ -868,7 +1571,7 @@ async function loadAdmin() {
   const q = Object.entries(o.queue).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'empty';
   $('#adminErrors').innerHTML = `<div class="text-xs text-slate-500 mb-2">queue — ${esc(q)}</div>` +
     (o.recent_errors.length ? o.recent_errors.map(e => `
-      <div class="rounded border border-rose-900/50 bg-rose-950/20 p-2">
+      <div class="rounded-lg border border-rose-500/25 bg-rose-500/[0.05] p-3">
         <span class="text-rose-300">${esc(e.kind)}</span>
         <span class="text-xs text-slate-500">#${e.job_id} · ${esc(e.at)} · ${e.attempts} attempt(s)</span>
         <div class="text-xs text-slate-400 mt-1">${esc(e.error)}</div></div>`).join('')
@@ -877,16 +1580,15 @@ async function loadAdmin() {
   const u = await api('/api/admin/users');
   $('#adminUsers').innerHTML = `<table class="w-full text-sm whitespace-nowrap">
     <thead class="text-xs text-slate-500 text-left"><tr>
-      <th class="py-1">email</th><th>plan</th><th class="text-right">docs</th>
+      <th class="py-1.5">email</th><th>plan</th><th class="text-right">docs</th>
       <th class="text-center">profile</th><th class="text-right">scored</th>
-      <th class="text-right">pipeline</th><th class="text-right">cost</th>
-      <th>last login</th><th></th></tr></thead>
-    <tbody>${u.users.map(x => `<tr class="border-t border-slate-800 ${x.is_active ? '' : 'opacity-40'}">
-      <td class="py-1.5 text-slate-300">${esc(x.email)}</td>
+      <th class="text-right">saved</th><th class="text-right">cost</th>
+      <th>last seen</th><th></th></tr></thead>
+    <tbody>${u.users.map(x => `<tr class="border-t border-white/8 ${x.is_active ? '' : 'opacity-40'}">
+      <td class="py-2 text-slate-300">${esc(x.email)}</td>
       <td class="text-xs ${x.plan === 'pro' ? 'text-indigo-300' : 'text-slate-500'}">${esc(x.plan)}</td>
       <td class="text-right">${x.documents}</td>
-      <td class="text-center">${x.has_profile
-        ? '<span class="text-emerald-400">yes</span>' : '<span class="text-slate-600">no</span>'}</td>
+      <td class="text-center">${x.has_profile ? '<span class="text-emerald-400">yes</span>' : '<span class="text-slate-600">no</span>'}</td>
       <td class="text-right">${x.scored}</td>
       <td class="text-right">${x.pipeline}</td>
       <td class="text-right text-slate-400">$${x.spend_usd}</td>
@@ -895,34 +1597,40 @@ async function loadAdmin() {
         class="toggleUser text-xs ${x.is_active ? 'text-rose-400' : 'text-emerald-400'} hover:underline">
         ${x.is_active ? 'disable' : 'enable'}</button></td>
     </tr>`).join('')}</tbody></table>
-    <div class="text-xs text-slate-600 mt-2">${u.total} user(s). Documents and generated
-    content are not shown here by design.</div>`;
+    <div class="text-xs text-slate-600 mt-3">${u.total} user(s). Documents and generated content
+    are deliberately not shown here.</div>`;
 
-  document.querySelectorAll('.toggleUser').forEach(b => b.onclick = async () => {
+  $$('.toggleUser').forEach(b => b.onclick = async () => {
     const active = b.dataset.active !== 'true';
     if (!active && !confirm('Disable this account? Their sessions end immediately.')) return;
-    try {
-      await post(`/api/admin/users/${b.dataset.uid}/active`, { is_active: active });
-      loadAdmin();
-    } catch (e) { alert(e.message); }
+    try { await post(`/api/admin/users/${b.dataset.uid}/active`, { is_active: active }); loadAdmin(); }
+    catch (e) { flash(e.message, 'bad'); }
   });
 }
 
-/* ---------------- drawer ---------------- */
-function openDrawer(title, html) {
-  $('#drawerTitle').textContent = title;
-  $('#drawerBody').innerHTML = html;
-  $('#drawer').classList.remove('hidden');
-}
-$('#drawerClose').onclick = $('#drawerBg').onclick = () => $('#drawer').classList.add('hidden');
-
-/* ---------------- boot ---------------- */
+/* ------------------------------------------------------------------ */
+/* boot                                                               */
+/* ------------------------------------------------------------------ */
 (async function boot() {
   try {
+    CFG = await api('/api/config');
     await refresh();
-    showApp();
-    showTab('home');
-  } catch (e) { showAuth(); }
+  } catch {
+    return;  // api() has already redirected to /signin on a 401
+  }
+  $('#bootView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+
+  try { await loadSetup(); } catch (e) { console.warn(e); }
+  renderTargetSummary();
+
+  if (!ME.platform_ready) {
+    flash('The service is not fully configured yet — AI actions will not run.', 'bad');
+  }
+
+  // Land on whichever screen has the next real thing to do.
+  paintBands();
+  showTab(needsSetup() ? 'setup' : 'matches');
 })();
 </script>
 </body>

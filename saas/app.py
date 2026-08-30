@@ -26,7 +26,18 @@ from pydantic import BaseModel, Field
 from codeskate.agents import career_manager, pipeline
 from codeskate.models import SkillGraph
 
-from . import admin, auth, billing, google_auth, handlers, plans, queue, quota, store  # handlers registers kinds
+from . import (  # handlers registers kinds
+    admin,
+    auth,
+    billing,
+    google_auth,
+    handlers,
+    plans,
+    presets,
+    queue,
+    quota,
+    store,
+)
 from .engine import create_all
 from . import runtime
 from .runtime import PlatformKeyMissing
@@ -140,7 +151,9 @@ def google_callback(
     base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
 
     def fail(reason: str) -> RedirectResponse:
-        return RedirectResponse(f"{base}/?auth_error={quote(reason)}", status_code=303)
+        # Failures land on the sign-in page, not the marketing page: someone who
+        # just tried to sign in wants to try again, not read the pitch.
+        return RedirectResponse(f"{base}/signin?auth_error={quote(reason)}", status_code=303)
 
     if error:
         return fail("Sign-in was cancelled")
@@ -165,7 +178,7 @@ def google_callback(
     session = auth.new_session()
     store.create_session(session.token_hash, user["id"])
 
-    redirect = RedirectResponse(f"{base}/", status_code=303)
+    redirect = RedirectResponse(f"{base}/app", status_code=303)
     redirect.set_cookie(value=session.token, **auth.cookie_kwargs(SECURE_COOKIES))
     redirect.delete_cookie(auth.STATE_COOKIE, path="/")
     return redirect
@@ -181,11 +194,13 @@ def logout(response: Response, cs_session: str | None = Cookie(default=None)) ->
 
 @app.get("/api/config")
 def public_config() -> dict:
-    """What the sign-in screen needs before anyone is authenticated."""
+    """What the marketing, pricing and sign-in pages need before authentication."""
     return {
         "google_configured": google_auth.configured(),
         "billing_configured": billing.configured(),
         "plans": plans.catalogue(),
+        "presets": presets.catalogue(),
+        "cities": presets.city_catalogue(),
     }
 
 
@@ -298,6 +313,122 @@ def save_targets(body: TargetsBody, user: dict = Depends(current_user)) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# what you are looking for
+# --------------------------------------------------------------------------- #
+
+
+class SetupBody(BaseModel):
+    roles: list[str] = Field(min_length=1, max_length=4)
+    cities: list[str] = Field(default_factory=list, max_length=20)
+    years: float = Field(default=0, ge=0, le=50)
+    min_salary_lpa: float = Field(default=0, ge=0, le=500)
+    current_role: str = Field(default="", max_length=200)
+    remote_ok: bool = True
+    avoid: list[str] = Field(default_factory=list, max_length=40)
+
+
+@app.get("/api/setup")
+def get_setup(user: dict = Depends(current_user)) -> dict:
+    """What the user is looking for, plus a suggestion if they have not said yet.
+
+    The suggestion is derived from their own skill graph by keyword counting — free
+    and instant — so a new account is never shown an empty form it does not know
+    how to fill in.
+    """
+    saved = store.load_targets(user["id"]) or {}
+    graph = store.load_profile(user["id"])
+    constraints = saved.get("constraints") or {}
+
+    return {
+        "configured": bool(saved.get("preset_keys")),
+        "roles": saved.get("preset_keys") or [],
+        "cities": saved.get("cities") or list(presets.DEFAULT_CITIES),
+        "years": constraints.get("years_of_experience")
+        or (graph or {}).get("total_years_experience")
+        or 0,
+        "min_salary_lpa": constraints.get("minimum_salary_inr_lpa") or 0,
+        "current_role": constraints.get("current_role") or (graph or {}).get("headline") or "",
+        "remote_ok": saved.get("remote_ok", True),
+        "avoid": [t.strip() for t in saved.get("avoid") or []],
+        "suggested_roles": presets.suggest(graph),
+        "catalogue": presets.catalogue(),
+        "all_cities": presets.city_catalogue(),
+        # The raw lists, for anyone who wants to see or tune what the choice produced.
+        "title_include": saved.get("title_include") or [],
+        "title_exclude": saved.get("title_exclude") or [],
+    }
+
+
+@app.post("/api/setup")
+def post_setup(body: SetupBody, user: dict = Depends(current_user)) -> dict:
+    """Turn the four questions on the setup screen into a full filter config."""
+    existing = store.load_targets(user["id"]) or {}
+    try:
+        config = presets.targets_for(
+            body.roles,
+            years=body.years,
+            cities=body.cities or list(presets.DEFAULT_CITIES),
+            remote_ok=body.remote_ok,
+            min_salary_lpa=body.min_salary_lpa,
+            current_role=body.current_role,
+            avoid=body.avoid,
+            keep_constraints=existing.get("constraints") or {},
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    config["avoid"] = body.avoid
+    store.save_targets(user["id"], config)
+    return {
+        "roles": config["preset_keys"],
+        "cities": config["cities"],
+        "title_include": config["title_include"],
+        "title_exclude": config["title_exclude"],
+    }
+
+
+class RulesBody(BaseModel):
+    title_include: list[str] = Field(default_factory=list, max_length=200)
+    title_exclude: list[str] = Field(default_factory=list, max_length=200)
+
+
+@app.post("/api/settings/rules")
+def save_rules(body: RulesBody, user: dict = Depends(current_user)) -> dict:
+    """Overwrite only the two title lists, keeping everything else intact.
+
+    The advanced editor previously posted a whole config, which meant hand-editing
+    the title lists silently discarded the locations and constraints alongside them.
+    Merging is the only safe shape for a partial editor.
+    """
+    config = store.load_targets(user["id"]) or {}
+    if not config:
+        raise HTTPException(400, "Choose what you are looking for first")
+
+    include = [t.strip().lower() for t in body.title_include if t.strip()]
+    exclude = [t.strip().lower() for t in body.title_exclude if t.strip()]
+    if not include:
+        raise HTTPException(400, "Leave at least one entry in the 'must contain' list")
+
+    config["title_include"] = include
+    # Re-padded so a hand-typed "sales" behaves as a whole word rather than also
+    # matching Salesforce.
+    config["title_exclude"] = presets.pad_exclusions(exclude)
+    store.save_targets(user["id"], config)
+    return {"title_include": config["title_include"], "title_exclude": config["title_exclude"]}
+
+
+@app.get("/api/diagnostics")
+def diagnostics(user: dict = Depends(current_user)) -> dict:
+    """Why the match list looks the way it does. Free, no credits spent.
+
+    Added because a user watched the free filter report `1368 unscored -> 0
+    plausible` and reasonably concluded the product was broken. Nothing was broken;
+    the system just never said which rule emptied the list.
+    """
+    return handlers.match_diagnostics(user["id"])
+
+
+# --------------------------------------------------------------------------- #
 # state
 # --------------------------------------------------------------------------- #
 
@@ -308,9 +439,19 @@ def me(user: dict = Depends(current_user)) -> dict:
     raw = store.load_profile(user_id)
     graph = SkillGraph.model_validate(raw) if raw else None
     counts = store.stage_counts(user_id)
+    targets = store.load_targets(user_id) or {}
 
     return {
         "email": user["email"],
+        # Drives which screen the app opens on. Three facts, in the order they
+        # have to be true: resume, what you want, results.
+        "setup": {
+            "has_documents": bool(store.list_documents(user_id)),
+            "has_profile": graph is not None,
+            "has_targets": bool(targets.get("preset_keys")),
+            "roles": targets.get("preset_keys") or [],
+            "cities": targets.get("cities") or [],
+        },
         "is_admin": admin.is_admin(user["email"]),
         "display_name": user.get("display_name"),
         "avatar_url": user.get("avatar_url"),
@@ -406,16 +547,18 @@ class JobBody(BaseModel):
     stage: str = "screen"
 
 
+# Shown verbatim in the progress toast, so these are written for the person
+# waiting rather than for whoever wrote the handler.
 LABELS = {
-    "profile": "Building your skill graph",
-    "gaps": "Analysing your gaps",
-    "discover": "Pulling live jobs",
-    "score": "Scoring matches",
-    "tailor": "Tailoring your resume",
-    "outreach": "Drafting outreach",
-    "prep": "Building interview prep",
+    "profile": "Reading your resume",
+    "gaps": "Checking how ready you are",
+    "discover": "Searching company career pages",
+    "score": "Finding your matches",
+    "tailor": "Rewriting your resume for this job",
+    "outreach": "Writing your messages",
+    "prep": "Preparing you for the interview",
     "intel": "Researching the company",
-    "comp": "Estimating compensation",
+    "comp": "Working out the salary band",
 }
 
 
@@ -525,6 +668,23 @@ def shortlist(body: ShortlistBody, user: dict = Depends(current_user)) -> dict:
     return {"added": len(rows)}
 
 
+@app.post("/api/save/{external_id:path}")
+def save_job(external_id: str, user: dict = Depends(current_user)) -> dict:
+    """Put one job on the user's board.
+
+    Previously the only way in was the bulk "shortlist everything above 70"
+    action, so a job the user personally liked at 62 could not be saved at all
+    without paying to generate a resume for it first.
+    """
+    if not store.posting(external_id):
+        raise HTTPException(404, "That job posting is no longer available")
+
+    added = store.add_application(user["id"], external_id)
+    if added:
+        store.record_outcome(user["id"], "shortlisted", "saved from matches", external_id)
+    return {"saved": True, "already_saved": not added}
+
+
 @app.get("/api/pipeline")
 def pipeline_view(user: dict = Depends(current_user)) -> dict:
     user_id = user["id"]
@@ -598,39 +758,63 @@ def artifact(kind: str, external_id: str, user: dict = Depends(current_user)) ->
 
 @app.get("/api/next")
 def next_actions(user: dict = Depends(current_user)) -> dict:
-    """Agent 16's rule engine, reading the hosted store instead of SQLite."""
+    """The one thing worth doing next, in the user's words rather than the system's.
+
+    Each entry carries an `action` the interface can wire to a button, so this is a
+    to-do list you can act on rather than a description of one.
+    """
     user_id = user["id"]
     actions: list[dict] = []
 
-    def add(label: str, why: str) -> None:
-        actions.append({"label": label, "why": why})
+    def add(label: str, why: str, action: str = "") -> None:
+        actions.append({"label": label, "why": why, "action": action})
 
     if not store.list_documents(user_id):
-        add("Upload your resume and brag document",
-            "Everything downstream is built from these.")
+        add("Add your resume",
+            "Everything here is built from it. A PDF is fine.", "upload")
         return {"actions": actions}
     if not store.load_profile(user_id):
-        add("Build your skill graph", "Nothing else can run without it.")
+        add("Let us read your resume",
+            "One pass to pull out your skills and what you can prove.", "profile")
+        return {"actions": actions}
+    if not (store.load_targets(user_id) or {}).get("preset_keys"):
+        add("Tell us what you are looking for",
+            "Pick the kind of role and the cities. This is what decides your matches.",
+            "setup")
         return {"actions": actions}
     if store.postings_count() == 0:
-        add("Pull live jobs", "No postings in the database yet. This is free.")
-    if not store.latest_gap_report(user_id):
-        add("Run gap analysis", "Find out what is blocking you before spending applications.")
-    if store.scored_count(user_id) == 0 and store.postings_count():
-        add("Score your matches", "The free prefilter drops most postings before any cost.")
+        add("Search for openings",
+            "We read company career pages directly. Free, takes about a minute.",
+            "discover")
+        return {"actions": actions}
+    if store.scored_count(user_id) == 0:
+        add("See your matches",
+            "Each job gets a score out of 100 and a written reason.", "score")
+        return {"actions": actions}
 
     strong = store.unpursued_strong_count(user_id)
     if strong:
-        add(f"Shortlist {strong} strong match(es)", "Scored well but not yet in your pipeline.")
+        add(f"Save {strong} strong match{'es' if strong > 1 else ''}",
+            "These scored well and you have not started on them yet.", "shortlist")
 
-    for a in store.list_applications(user_id, "shortlisted"):
-        add(f"Tailor resume: {a['company']} — {a['title'][:40]}",
-            "Shortlisted but no tailored resume yet.")
+    for a in store.list_applications(user_id, "shortlisted")[:3]:
+        add(f"Rewrite your resume for {a['company']}",
+            f"{a['title'][:60]} — saved, but nothing prepared yet.", "tailor")
     for a in store.list_applications(user_id, "offer"):
         add(f"Negotiate the offer from {a['company']}",
-            "The highest-leverage moment in the whole process.")
+            "The single highest-paid hour of the whole search.", "negotiate")
 
-    return {"actions": actions[:8]}
+    if not store.latest_gap_report(user_id):
+        add("Find out what is holding you back",
+            "An honest read on what to learn next, and the fastest way to prove it.",
+            "gaps")
+
+    if not actions:
+        add("Keep your search moving",
+            "Nothing is waiting on you. Search again in a few days for new openings.",
+            "discover")
+
+    return {"actions": actions[:6]}
 
 
 @app.get("/api/usage")
@@ -774,13 +958,44 @@ def terms() -> FileResponse:
     return FileResponse(STATIC / "terms.html")
 
 
+@app.get("/refunds")
+def refunds() -> FileResponse:
+    """Razorpay's KYC review asks for a reachable refund policy, and a paid product
+    with no stated policy is a fair thing for them to reject."""
+    return FileResponse(STATIC / "refunds.html")
+
+
+@app.get("/contact")
+def contact() -> FileResponse:
+    return FileResponse(STATIC / "contact.html")
+
+
 # --------------------------------------------------------------------------- #
-# static
+# pages
 # --------------------------------------------------------------------------- #
+#
+# `/` is the marketing page and `/app` is the product. They were the same file
+# before, which meant the first thing a visitor saw was a sign-in button with no
+# explanation of what they would be signing in to.
 
 
 @app.get("/")
-def index() -> FileResponse:
+def home() -> FileResponse:
+    return FileResponse(STATIC / "home.html")
+
+
+@app.get("/pricing")
+def pricing() -> FileResponse:
+    return FileResponse(STATIC / "pricing.html")
+
+
+@app.get("/signin")
+def signin() -> FileResponse:
+    return FileResponse(STATIC / "signin.html")
+
+
+@app.get("/app")
+def app_page() -> FileResponse:
     return FileResponse(STATIC / "index.html")
 
 

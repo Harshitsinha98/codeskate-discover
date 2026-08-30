@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeSkate — find the jobs that will actually call you back</title>
+<meta name="description" content="CodeSkate reads your resume, scores live openings at India offices of top employers, and prepares each application properly. Free to start.">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html { -webkit-font-smoothing: antialiased; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .glow { background:
+      radial-gradient(60rem 32rem at 50% -12rem, rgba(99,102,241,.28), transparent 70%),
+      radial-gradient(40rem 24rem at 88% 8rem, rgba(168,85,247,.16), transparent 70%); }
+  .card { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.08); }
+  .grad { background: linear-gradient(92deg,#a5b4fc,#e9d5ff 55%,#fbcfe8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  details[open] .chev { transform: rotate(180deg); }
+</style>
+</head>
+<body class="bg-[#08080c] text-slate-300">
+
+<!-- ============================== NAV ============================== -->
+<header class="sticky top-0 z-40 border-b border-white/5 bg-[#08080c]/85 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center gap-8">
+    <a href="/" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center">
+        <svg viewBox="0 0 24 24" class="w-4.5 h-4.5" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px">
+          <path d="M4 14l6-6 4 4 6-8"/></svg>
+      </div>
+      <span class="text-white font-semibold tracking-tight text-[17px]">CodeSkate</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-7 text-sm text-slate-400">
+      <a href="#how" class="hover:text-white transition">How it works</a>
+      <a href="#features" class="hover:text-white transition">What you get</a>
+      <a href="/pricing" class="hover:text-white transition">Pricing</a>
+      <a href="#faq" class="hover:text-white transition">FAQ</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-3">
+      <a href="/signin" class="hidden sm:block text-sm text-slate-400 hover:text-white transition">Sign in</a>
+      <a href="/signin" class="text-sm font-medium px-4 py-2 rounded-lg bg-white text-slate-900 hover:bg-slate-200 transition">
+        Get started free
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ============================== HERO ============================== -->
+<section class="glow relative overflow-hidden">
+  <div class="max-w-6xl mx-auto px-5 pt-16 pb-20 md:pt-24 md:pb-28">
+    <div class="grid lg:grid-cols-[1.05fr_.95fr] gap-14 items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          Live openings · India offices only
+        </div>
+
+        <h1 class="mt-6 text-[2.6rem] leading-[1.08] md:text-6xl md:leading-[1.05] font-semibold tracking-tight text-white">
+          Stop applying to 200 jobs.<br>
+          <span class="grad">Apply to the 12 that will call back.</span>
+        </h1>
+
+        <p class="mt-6 text-lg text-slate-400 max-w-xl leading-relaxed">
+          CodeSkate reads your resume once, then goes through live openings at the India
+          offices of good employers and tells you — with a reason — which ones you would
+          genuinely clear. Then it prepares each application properly.
+        </p>
+
+        <div class="mt-9 flex flex-wrap items-center gap-3">
+          <a href="/signin" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-medium hover:from-indigo-400 hover:to-violet-500 transition shadow-lg shadow-indigo-950/50">
+            Find my matches — free
+            <svg viewBox="0 0 20 20" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5l4.5 4.5-4.5 4.5"/></svg>
+          </a>
+          <a href="/pricing" class="px-6 py-3.5 rounded-xl border border-white/12 text-slate-200 font-medium hover:bg-white/5 transition">
+            See pricing
+          </a>
+        </div>
+
+        <p class="mt-5 text-sm text-slate-500">
+          No card needed. Sign in with Google. Your resume is only ever used for your own account.
+        </p>
+      </div>
+
+      <!-- example match card -->
+      <div class="relative">
+        <div class="absolute -inset-4 bg-gradient-to-tr from-indigo-600/15 to-violet-600/10 rounded-3xl blur-2xl"></div>
+        <div class="relative card rounded-2xl p-5 shadow-2xl">
+          <div class="flex items-center justify-between">
+            <div class="text-xs uppercase tracking-wider text-slate-500">Your matches</div>
+            <div class="text-[11px] px-2 py-0.5 rounded bg-white/5 text-slate-500 border border-white/5">example</div>
+          </div>
+
+          <div class="mt-4 space-y-2.5">
+            <div class="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 p-4">
+              <div class="flex items-start gap-3.5">
+                <div class="shrink-0 w-11 h-11 rounded-lg bg-emerald-500/15 border border-emerald-500/25 grid place-items-center">
+                  <span class="text-emerald-300 font-semibold">78</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="text-white text-sm font-medium">Cloud Support Engineer</div>
+                  <div class="text-xs text-slate-500 mt-0.5">Bengaluru · Hybrid</div>
+                  <p class="text-[13px] text-slate-400 mt-2 leading-relaxed">
+                    Your 3 years of P1 incident ownership maps directly onto their escalation
+                    tier. They ask for Linux, which you would need to show.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-xl bg-white/[0.02] border border-white/8 p-4">
+              <div class="flex items-start gap-3.5">
+                <div class="shrink-0 w-11 h-11 rounded-lg bg-amber-500/10 border border-amber-500/20 grid place-items-center">
+                  <span class="text-amber-300 font-semibold">61</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="text-white text-sm font-medium">Site Reliability Engineer I</div>
+                  <div class="text-xs text-slate-500 mt-0.5">Hyderabad · On-site</div>
+                  <p class="text-[13px] text-slate-400 mt-2 leading-relaxed">
+                    Worth a shot with a referral. Their on-call and SLA work is your daily job;
+                    the Kubernetes requirement is the gap.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-xl bg-white/[0.015] border border-white/5 p-3.5 flex items-center gap-3.5 opacity-60">
+              <div class="shrink-0 w-11 h-11 rounded-lg bg-white/5 border border-white/8 grid place-items-center">
+                <span class="text-slate-500 font-semibold">24</span>
+              </div>
+              <div>
+                <div class="text-slate-400 text-sm">Senior Platform Engineer</div>
+                <div class="text-xs text-slate-600 mt-0.5">Wants 8+ years — skipped, no time wasted</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-white/5 text-xs text-slate-500">
+            1,204 openings read &middot; 38 worth your time &middot; 3 credits used
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PROBLEM ============================== -->
+<section class="border-y border-white/5 bg-white/[0.012]">
+  <div class="max-w-6xl mx-auto px-5 py-16 md:py-20">
+    <h2 class="text-2xl md:text-3xl font-semibold text-white tracking-tight max-w-2xl">
+      Job hunting in India is a volume game that nobody wins
+    </h2>
+    <p class="mt-4 text-slate-400 max-w-2xl">
+      You send the same resume to 200 listings, hear back from four, and never find out why.
+      Each of those three problems has a fix, and none of them is "apply harder".
+    </p>
+
+    <div class="mt-12 grid md:grid-cols-3 gap-5">
+      <div class="card rounded-2xl p-6">
+        <div class="text-3xl font-semibold text-white">200</div>
+        <div class="mt-2 text-white font-medium">applications, one resume</div>
+        <p class="mt-2.5 text-sm text-slate-400 leading-relaxed">
+          A generic resume loses to a targeted one every time. Nobody has the hours to
+          rewrite it 200 times, so everyone sends the generic one.
+        </p>
+      </div>
+      <div class="card rounded-2xl p-6">
+        <div class="text-3xl font-semibold text-white">70%</div>
+        <div class="mt-2 text-white font-medium">of listings were never for you</div>
+        <p class="mt-2.5 text-sm text-slate-400 leading-relaxed">
+          Wrong years, wrong city, wrong stack, or reposted from six months ago. You only
+          find out after you have spent the effort.
+        </p>
+      </div>
+      <div class="card rounded-2xl p-6">
+        <div class="text-3xl font-semibold text-white">0</div>
+        <div class="mt-2 text-white font-medium">feedback, ever</div>
+        <p class="mt-2.5 text-sm text-slate-400 leading-relaxed">
+          Rejections arrive with no reason, so you repeat the same mistake for a year and
+          call it bad luck.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== HOW ============================== -->
+<section id="how" class="max-w-6xl mx-auto px-5 py-16 md:py-24">
+  <div class="max-w-2xl">
+    <div class="text-sm font-medium text-indigo-400">How it works</div>
+    <h2 class="mt-3 text-2xl md:text-3xl font-semibold text-white tracking-tight">
+      Three things to do. Then read your matches.
+    </h2>
+    <p class="mt-4 text-slate-400">
+      Setup takes about five minutes and one of the three steps is just picking a city.
+    </p>
+  </div>
+
+  <div class="mt-12 space-y-4">
+    <div class="card rounded-2xl p-6 md:p-7 flex gap-5 md:gap-7">
+      <div class="shrink-0 w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/25 grid place-items-center text-indigo-300 font-semibold">1</div>
+      <div>
+        <h3 class="text-white font-medium text-lg">Upload your resume</h3>
+        <p class="mt-2 text-slate-400 leading-relaxed max-w-3xl">
+          A PDF is fine. We read it once and pull out your skills, your years, and — the part
+          that matters — <span class="text-slate-200">which of your claims you can actually
+          back up with something you did</span>. Anything we cannot find evidence for is
+          marked, and never gets written onto a resume later.
+        </p>
+      </div>
+    </div>
+
+    <div class="card rounded-2xl p-6 md:p-7 flex gap-5 md:gap-7">
+      <div class="shrink-0 w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/25 grid place-items-center text-indigo-300 font-semibold">2</div>
+      <div>
+        <h3 class="text-white font-medium text-lg">Pick the kind of work and the cities</h3>
+        <p class="mt-2 text-slate-400 leading-relaxed max-w-3xl">
+          Tap a card — Support &amp; Operations, SRE &amp; Cloud, Software Development, Data,
+          QA, Security, Networking, IT Ops — and choose your cities. That is the whole
+          configuration. We suggest the right cards from your resume, so usually you are just
+          confirming.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2 text-xs">
+          <span class="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/25 text-indigo-200">Support &amp; Operations</span>
+          <span class="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/25 text-indigo-200">SRE, Cloud &amp; DevOps</span>
+          <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400">Software Development</span>
+          <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400">Data &amp; Analytics</span>
+          <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400">QA &amp; Automation</span>
+          <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400">Cybersecurity</span>
+          <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400">Networking</span>
+          <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-400">IT &amp; Systems</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rounded-2xl p-6 md:p-7 flex gap-5 md:gap-7">
+      <div class="shrink-0 w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/25 grid place-items-center text-indigo-300 font-semibold">3</div>
+      <div>
+        <h3 class="text-white font-medium text-lg">Press one button</h3>
+        <p class="mt-2 text-slate-400 leading-relaxed max-w-3xl">
+          We read the career pages of employers hiring in India directly — not a job board,
+          so nothing is stale or reposted — then score every opening that fits and hand you a
+          ranked list with a written reason for each. From there, one tap per job gives you a
+          rewritten resume, the messages to send, and interview prep.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== FEATURES ============================== -->
+<section id="features" class="border-y border-white/5 bg-white/[0.012]">
+  <div class="max-w-6xl mx-auto px-5 py-16 md:py-24">
+    <div class="max-w-2xl">
+      <div class="text-sm font-medium text-indigo-400">What you get</div>
+      <h2 class="mt-3 text-2xl md:text-3xl font-semibold text-white tracking-tight">
+        Everything after "should I apply?"
+      </h2>
+    </div>
+
+    <div class="mt-12 grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div class="card rounded-2xl p-6">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+        <h3 class="mt-4 text-white font-medium">A score with a reason</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          Out of 100, plus two sentences on what matched and what does not. A low score
+          saves you the application; a high one tells you what to lead with.
+        </p>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5M15 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V7l-4-4zM9 13h6M9 17h4"/></svg>
+        <h3 class="mt-4 text-white font-medium">A resume per job, that cannot lie</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          Reordered and rewritten for the specific posting, then checked line by line
+          against your real history. If a bullet cannot be traced back to something you
+          did, you are told before you send it.
+        </p>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/></svg>
+        <h3 class="mt-4 text-white font-medium">The messages, written</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          Cover letter, a recruiter message short enough for LinkedIn, an email to the
+          hiring manager, and the follow-up for a week later. Copy, read, send.
+        </p>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 115 .5c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg>
+        <h3 class="mt-4 text-white font-medium">Interview prep for that role</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          The questions this posting invites, what each one is really testing, and an honest
+          list of where you will get caught out. Plus a briefing on the company.
+        </p>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <h3 class="mt-4 text-white font-medium">A salary number to ask for</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          A band in LPA for the role, your years and your city, and a recommended ask —
+          with how confident we are, so you know when to go and verify it.
+        </p>
+      </div>
+
+      <div class="card rounded-2xl p-6">
+        <svg viewBox="0 0 24 24" class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15V9M13 15V6M18 15v-4"/></svg>
+        <h3 class="mt-4 text-white font-medium">One board for the whole search</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          Every job you save moves through saved, applied, interviewing, offer. It tells you
+          who has gone quiet and who to follow up with today.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== HONESTY ============================== -->
+<section class="max-w-6xl mx-auto px-5 py-16 md:py-24">
+  <div class="grid lg:grid-cols-2 gap-12 items-start">
+    <div>
+      <div class="text-sm font-medium text-indigo-400">Where we draw the line</div>
+      <h2 class="mt-3 text-2xl md:text-3xl font-semibold text-white tracking-tight">
+        Two things this deliberately will not do
+      </h2>
+      <p class="mt-4 text-slate-400 leading-relaxed">
+        Both are things competing tools sell as features. We think both end badly for you,
+        so they are not options you can turn on.
+      </p>
+    </div>
+
+    <div class="space-y-4">
+      <div class="rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] p-6">
+        <h3 class="text-white font-medium">It will not put a skill on your resume that you do not have</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          Every generated bullet is traced back to something in your own history. If it cannot
+          be traced, you see a warning instead of a polished lie. You are the one who has to
+          sit in the interview.
+        </p>
+      </div>
+      <div class="rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] p-6">
+        <h3 class="text-white font-medium">It will not auto-apply to hundreds of jobs for you</h3>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+          Mass auto-apply is how you get filtered out and, on some sites, banned. You press
+          submit, on jobs you chose, with an application worth reading.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PRICING ============================== -->
+<section class="border-y border-white/5 bg-white/[0.012]">
+  <div class="max-w-6xl mx-auto px-5 py-16 md:py-24">
+    <div class="max-w-2xl">
+      <div class="text-sm font-medium text-indigo-400">Pricing</div>
+      <h2 class="mt-3 text-2xl md:text-3xl font-semibold text-white tracking-tight">
+        Start free. Upgrade when it has proved itself.
+      </h2>
+      <p class="mt-4 text-slate-400">
+        The free plan is enough to read your real matches and decide whether the scoring is
+        any good. If it is not, you have lost nothing.
+      </p>
+    </div>
+    <div id="planCards" class="mt-12 grid md:grid-cols-2 gap-5 max-w-4xl"></div>
+    <p class="mt-6 text-sm text-slate-500">
+      Prices in INR. Pay by UPI, card, net banking or wallet.
+      <a href="/pricing" class="text-indigo-400 hover:text-indigo-300 underline">Full comparison</a>
+    </p>
+  </div>
+</section>
+
+<!-- ============================== FAQ ============================== -->
+<section id="faq" class="max-w-3xl mx-auto px-5 py-16 md:py-24">
+  <h2 class="text-2xl md:text-3xl font-semibold text-white tracking-tight">Questions</h2>
+  <div class="mt-10 divide-y divide-white/8">
+
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Where do the jobs come from?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        Straight from the companies' own careers pages — the same feeds their site uses.
+        That means no reposted listings, no ghost jobs from an aggregator, and a live link
+        you apply through directly. We only keep the roles based in India.
+      </p>
+    </details>
+
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">What is a credit?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        One piece of AI work. Scoring one job is one credit; rewriting a resume is one;
+        interview prep is one. Searching for openings is free and never uses any. Free gives
+        you 40 a month, Pro 800 — which in practice is far more than anyone applying
+        seriously gets through.
+      </p>
+    </details>
+
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Do I need an OpenAI key or any other account?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        No. A Google sign-in is the only account you need. The AI runs on our side and is
+        included in the plan.
+      </p>
+    </details>
+
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Who can see my resume?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        Only you. It is stored against your account and used only to answer your own
+        requests. It is never shown to other users, never sent to employers, and never shown
+        in the operator's own dashboard — that view is built to show counts and revenue only.
+        See the <a href="/privacy" class="text-indigo-400 hover:text-indigo-300 underline">privacy policy</a>.
+      </p>
+    </details>
+
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">I am not in tech. Is this useful?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        Right now it is built for technology roles — support and operations, cloud and SRE,
+        development, data, QA, security, networking and IT. If your work is one of those,
+        including if you are trying to move from one to another, it will work well. Outside
+        them, the job coverage is not there yet.
+      </p>
+    </details>
+
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Can I cancel?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        There is nothing to cancel. Pro is bought a month at a time and simply stops — no
+        auto-debit, no subscription to hunt for. Buy another month when you want one.
+        <a href="/refunds" class="text-indigo-400 hover:text-indigo-300 underline">Refund policy</a>.
+      </p>
+    </details>
+
+  </div>
+</section>
+
+<!-- ============================== CTA ============================== -->
+<section class="glow border-t border-white/5">
+  <div class="max-w-3xl mx-auto px-5 py-20 text-center">
+    <h2 class="text-3xl md:text-4xl font-semibold text-white tracking-tight">
+      Find out which jobs are actually worth your evening
+    </h2>
+    <p class="mt-4 text-slate-400 text-lg">
+      Upload a resume, pick two cards, press one button. Free, and about five minutes.
+    </p>
+    <a href="/signin" class="mt-9 inline-flex items-center gap-2 px-7 py-4 rounded-xl bg-white text-slate-900 font-medium hover:bg-slate-200 transition">
+      Get started free
+      <svg viewBox="0 0 20 20" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5l4.5 4.5-4.5 4.5"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- ============================== FOOTER ============================== -->
+<footer class="border-t border-white/5">
+  <div class="max-w-6xl mx-auto px-5 py-10 flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-slate-500">
+    <span class="text-slate-400 font-medium">CodeSkate</span>
+    <a href="/pricing" class="hover:text-slate-300">Pricing</a>
+    <a href="/privacy" class="hover:text-slate-300">Privacy</a>
+    <a href="/terms" class="hover:text-slate-300">Terms</a>
+    <a href="/refunds" class="hover:text-slate-300">Refunds</a>
+    <a href="/contact" class="hover:text-slate-300">Contact</a>
+    <span class="ml-auto text-slate-600">Built for job seekers in India.</span>
+  </div>
+</footer>
+
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TICK = `<svg viewBox="0 0 20 20" class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor"
+  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
+
+// Plans are rendered from the API so the page and the checkout can never quote
+// different numbers.
+fetch('/api/config').then(r => r.json()).then(c => {
+  document.getElementById('planCards').innerHTML = c.plans.map(p => {
+    const pro = p.key === 'pro';
+    return `
+    <div class="rounded-2xl p-7 ${pro
+      ? 'border-2 border-indigo-500/40 bg-indigo-500/[0.06] relative'
+      : 'card'}">
+      ${pro ? `<div class="absolute -top-3 left-7 px-2.5 py-1 rounded-md bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-medium">Most useful</div>` : ''}
+      <div class="text-white font-medium text-lg">${esc(p.name)}</div>
+      <div class="mt-3 flex items-baseline gap-1.5">
+        <span class="text-4xl font-semibold text-white">${p.price_inr ? '₹' + p.price_inr : '₹0'}</span>
+        <span class="text-slate-500">/ month</span>
+      </div>
+      <p class="mt-3 text-sm text-slate-400">${esc(p.blurb || '')}</p>
+      <ul class="mt-6 space-y-2.5 text-sm">
+        ${p.features.map(f => `<li class="flex gap-2.5 ${pro ? 'text-indigo-200' : 'text-slate-400'}">
+          <span class="${pro ? 'text-indigo-400' : 'text-slate-600'}">${TICK}</span>
+          <span>${esc(f)}</span></li>`).join('')}
+      </ul>
+      <a href="/signin" class="mt-7 block text-center px-5 py-3 rounded-xl font-medium transition ${pro
+        ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-400 hover:to-violet-500'
+        : 'border border-white/12 text-slate-200 hover:bg-white/5'}">
+        ${pro ? 'Start free, upgrade inside' : 'Start free'}</a>
+    </div>`;
+  }).join('');
+}).catch(() => {
+  document.getElementById('planCards').innerHTML =
+    '<div class="text-sm text-slate-500">Could not load plans. Reload the page.</div>';
+});
+</script>
+</body>
+</html>

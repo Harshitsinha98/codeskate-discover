@@ -79,15 +79,25 @@ def user_plan(user: dict) -> Plan:
 
 
 def status(user: dict) -> dict:
+    """Quota state for the UI.
+
+    Exposed twice under two names: `credits_*` is what the interface shows, and
+    `runs_*` is the older internal name kept so nothing silently breaks. "Agent
+    run" was never a phrase a job seeker should have had to learn.
+    """
     plan = user_plan(user)
     used = runs_used(user["id"])
+    left = max(0, plan.monthly_runs - used)
     return {
         "plan": plan.key,
         "plan_name": plan.name,
         "price_inr": plan.price_inr,
+        "credits_used": used,
+        "credits_limit": plan.monthly_runs,
+        "credits_left": left,
         "runs_used": used,
         "runs_limit": plan.monthly_runs,
-        "runs_left": max(0, plan.monthly_runs - used),
+        "runs_left": left,
         "max_scores_per_batch": plan.max_scores_per_batch,
         "blocked_agents": sorted(plan.blocked_agents),
         "resets_on": (period_start() + timedelta(days=32)).replace(day=1).date().isoformat(),
@@ -100,8 +110,8 @@ def check(user: dict, kind: str, units: int = 1) -> None:
 
     if kind in plan.blocked_agents:
         raise QuotaExceeded(
-            f"{kind.title()} is a Pro feature. Upgrade to unlock tailored resumes, "
-            "outreach, interview prep, company briefings and salary bands."
+            "That is a Pro feature. Pro unlocks tailored resumes, outreach messages, "
+            "interview prep, company briefings and salary bands."
         )
 
     used = runs_used(user["id"])
@@ -109,12 +119,12 @@ def check(user: dict, kind: str, units: int = 1) -> None:
         left = max(0, plan.monthly_runs - used)
         if plan.key == "free":
             raise QuotaExceeded(
-                f"You have used {used} of {plan.monthly_runs} free agent runs this "
-                f"month ({left} left). Upgrade to Pro for 800 runs a month."
+                f"You have used {used} of your {plan.monthly_runs} free credits this "
+                f"month ({left} left). Pro gives you 800 credits a month."
             )
         raise QuotaExceeded(
-            f"You have used {used} of {plan.monthly_runs} agent runs this month. "
-            "The allowance resets at the start of next month."
+            f"You have used all {plan.monthly_runs} credits this month. "
+            "They reset on the 1st."
         )
 
     cap = global_daily_run_cap()

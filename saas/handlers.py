@@ -168,23 +168,66 @@ def discover_handler(user_id: int, payload: dict, index: int) -> dict:
 
 
 def score_planner(user_id: int, payload: dict) -> dict:
-    """Apply the free prefilter now, so units are only the postings worth paying for."""
+    """Apply the free prefilter now, so units are only the postings worth paying for.
+
+    When the filter keeps nothing, this raises with the reason rather than queueing
+    an empty job. An empty job that "succeeds" is the worst possible outcome: the
+    user sees a green tick, no results, and no idea which of the two is wrong.
+    """
     if not store.load_profile(user_id):
-        raise RuntimeError("Build your skill graph first")
+        raise RuntimeError("Add your resume and build your profile first")
 
     targets = _targets(user_id)
-    candidates = store.unscored_postings(user_id, 5000)
-    kept = fit_scoring.prefilter(candidates, targets)
-    limit = int(payload.get("limit", 25))
-    selected = [j["external_id"] for j in kept[:limit]]
+    candidates = store.unscored_postings(user_id, 20000)
+    diag = fit_scoring.report(candidates, targets)
+    kept_ids = [j["external_id"] for j in fit_scoring.prefilter(candidates, targets)]
 
-    return {
-        "payload": {"units": selected},
-        "log": [
-            f"prefilter (free): {len(candidates)} unscored -> {len(kept)} plausible",
-            f"queued {len(selected)} for scoring",
-        ],
-    }
+    if not kept_ids:
+        detail = diag["advice"][0] if diag["advice"] else None
+        message = (
+            f"None of the {diag['total']:,} available jobs match what you are looking for."
+        )
+        if detail:
+            message += f" {detail['problem']} {detail['fix']}"
+        raise RuntimeError(message)
+
+    limit = int(payload.get("limit", 25))
+    selected = kept_ids[:limit]
+
+    log = [f"checked {diag['total']:,} jobs for free — {diag['kept']:,} worth scoring"]
+    for row in diag["rejected"]:
+        log.append(f"  skipped {row['count']:,}: {row['label'].lower()}")
+    log.append(f"scoring the best {len(selected)} now")
+
+    return {"payload": {"units": selected}, "log": log}
+
+
+def match_diagnostics(user_id: int) -> dict:
+    """The same free report the planner uses, on demand and without queueing work.
+
+    Exposed so the UI can answer "why am I seeing so few jobs?" before the user
+    spends a single credit, and without them having to start a job to find out.
+    """
+    targets = _targets(user_id)
+    candidates = store.unscored_postings(user_id, 20000)
+    diag = fit_scoring.report(candidates, targets)
+    diag["scored_already"] = store.scored_count(user_id)
+    diag["postings_total"] = store.postings_count()
+
+    # `report` only sees what is left to score, so an empty queue looks identical
+    # to an empty database from inside it. From out here the two are very
+    # different: "you have done them all" is success, "nothing loaded" is not.
+    if diag["total"] == 0 and diag["postings_total"] > 0:
+        diag["all_scored"] = True
+        diag["advice"] = [{
+            "problem": f"You have already scored all {diag['postings_total']:,} openings "
+                       "we currently have.",
+            "fix": "Search again for new ones — companies post daily and searching is free.",
+            "action": "discover",
+        }]
+    else:
+        diag["all_scored"] = False
+    return diag
 
 
 def score_handler(user_id: int, payload: dict, index: int) -> dict:
@@ -305,7 +348,10 @@ def intel_handler(user_id: int, payload: dict, index: int) -> dict:
 
     cached = store.load_company_intel(posting["company"])
     if cached:
-        return {"log": [f"served from shared cache for {posting['company']} — no cost"],
+        # Still recorded against this job so the UI can re-open it without asking
+        # the user to "generate" something that already exists.
+        store.save_artifact(user_id, "intel", cached, external_id)
+        return {"log": [f"already researched {posting['company']} — no credit used"],
                 "result": cached}
 
     llm = _llm(user_id, "intel")
@@ -314,6 +360,7 @@ def intel_handler(user_id: int, payload: dict, index: int) -> dict:
     )
     data = intel.model_dump(mode="json")
     store.save_company_intel(posting["company"], data)
+    store.save_artifact(user_id, "intel", data, external_id)
     return {"log": [f"briefing built, confidence {intel.confidence}"], "result": data}
 
 
@@ -338,6 +385,9 @@ def comp_handler(user_id: int, payload: dict, index: int) -> dict:
     )
     data = estimate.model_dump(mode="json")
     store.save_comp_estimate(user_id, external_id, data)
+    # Also stored as an artifact so re-opening the job costs nothing. Without this,
+    # closing the panel and opening it again charged a credit for the same answer.
+    store.save_artifact(user_id, "comp", data, external_id)
     log.append(f"band {estimate.base_low:g}-{estimate.base_high:g} {estimate.unit}, "
                f"confidence {estimate.confidence}")
     return {"log": log, "result": data}

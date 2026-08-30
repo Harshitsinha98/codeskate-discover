@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing — CodeSkate</title>
+<meta name="description" content="Free plan with 40 credits a month. Pro at ₹999/month, bought one month at a time — no auto-debit.">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+  .glow { background: radial-gradient(56rem 28rem at 50% -10rem, rgba(99,102,241,.24), transparent 70%); }
+  .card { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.08); }
+  details[open] .chev { transform: rotate(180deg); }
+</style>
+</head>
+<body class="bg-[#08080c] text-slate-300">
+
+<header class="sticky top-0 z-40 border-b border-white/5 bg-[#08080c]/85 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-5 h-16 flex items-center gap-8">
+    <a href="/" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14l6-6 4 4 6-8"/></svg>
+      </div>
+      <span class="text-white font-semibold tracking-tight text-[17px]">CodeSkate</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-7 text-sm text-slate-400">
+      <a href="/#how" class="hover:text-white transition">How it works</a>
+      <a href="/#features" class="hover:text-white transition">What you get</a>
+      <a href="/pricing" class="text-white">Pricing</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-3">
+      <a href="/signin" class="hidden sm:block text-sm text-slate-400 hover:text-white transition">Sign in</a>
+      <a href="/signin" class="text-sm font-medium px-4 py-2 rounded-lg bg-white text-slate-900 hover:bg-slate-200 transition">Get started free</a>
+    </div>
+  </div>
+</header>
+
+<section class="glow">
+  <div class="max-w-6xl mx-auto px-5 pt-16 pb-4 text-center">
+    <h1 class="text-4xl md:text-5xl font-semibold text-white tracking-tight">
+      One price. No auto-debit.
+    </h1>
+    <p class="mt-5 text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+      Pro is bought a month at a time. Nothing renews on its own, so there is no
+      subscription to remember to cancel — and no reason for us to hide the cancel button.
+    </p>
+  </div>
+</section>
+
+<section class="max-w-6xl mx-auto px-5 pb-4">
+  <div id="planCards" class="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+    <div class="text-sm text-slate-500 text-center py-10">Loading plans…</div>
+  </div>
+  <p id="payNote" class="mt-6 text-sm text-slate-500 text-center">
+    Pay by UPI, card, net banking or wallet through Razorpay. Prices include GST where applicable.
+  </p>
+</section>
+
+<!-- ===================== comparison ===================== -->
+<section class="max-w-4xl mx-auto px-5 py-16 md:py-20">
+  <h2 class="text-2xl font-semibold text-white tracking-tight">What is different on Pro</h2>
+  <div class="mt-8 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-slate-500 border-b border-white/8">
+          <th class="py-3 font-normal">&nbsp;</th>
+          <th class="py-3 font-normal w-28 text-center">Free</th>
+          <th class="py-3 font-medium w-28 text-center text-indigo-300">Pro</th>
+        </tr>
+      </thead>
+      <tbody id="cmpBody" class="divide-y divide-white/6"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== credits explainer ===================== -->
+<section class="border-y border-white/5 bg-white/[0.012]">
+  <div class="max-w-4xl mx-auto px-5 py-16">
+    <h2 class="text-2xl font-semibold text-white tracking-tight">What a credit buys</h2>
+    <p class="mt-4 text-slate-400 max-w-2xl leading-relaxed">
+      One credit is one piece of AI work. Searching for openings never uses a credit, so you
+      can refresh your list as often as you like.
+    </p>
+
+    <div class="mt-9 grid sm:grid-cols-2 gap-3">
+      <div class="card rounded-xl px-5 py-4 flex items-center gap-4">
+        <span class="text-2xl font-semibold text-white w-8">1</span>
+        <div><div class="text-slate-200 text-sm">Score one job</div>
+        <div class="text-xs text-slate-500">with a written reason</div></div>
+      </div>
+      <div class="card rounded-xl px-5 py-4 flex items-center gap-4">
+        <span class="text-2xl font-semibold text-white w-8">1</span>
+        <div><div class="text-slate-200 text-sm">Read your resume</div>
+        <div class="text-xs text-slate-500">once per update</div></div>
+      </div>
+      <div class="card rounded-xl px-5 py-4 flex items-center gap-4">
+        <span class="text-2xl font-semibold text-white w-8">1</span>
+        <div><div class="text-slate-200 text-sm">Rewrite your resume for a job</div>
+        <div class="text-xs text-slate-500">Pro only</div></div>
+      </div>
+      <div class="card rounded-xl px-5 py-4 flex items-center gap-4">
+        <span class="text-2xl font-semibold text-white w-8">1</span>
+        <div><div class="text-slate-200 text-sm">Messages, prep, briefing or salary band</div>
+        <div class="text-xs text-slate-500">each, Pro only</div></div>
+      </div>
+      <div class="card rounded-xl px-5 py-4 flex items-center gap-4 sm:col-span-2 border-emerald-500/20 bg-emerald-500/[0.05]">
+        <span class="text-2xl font-semibold text-emerald-400 w-8">0</span>
+        <div><div class="text-slate-200 text-sm">Search company career pages</div>
+        <div class="text-xs text-slate-500">always free, however many times you run it</div></div>
+      </div>
+    </div>
+
+    <p class="mt-8 text-sm text-slate-500 max-w-2xl leading-relaxed">
+      For scale: 800 credits is roughly 600 jobs scored plus a full application pack
+      (resume, messages, prep, briefing) for 45 of them. That is more than a serious
+      three-month search needs.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="max-w-3xl mx-auto px-5 py-16 md:py-20">
+  <h2 class="text-2xl font-semibold text-white tracking-tight">Billing questions</h2>
+  <div class="mt-8 divide-y divide-white/8">
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Will I be charged automatically next month?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        No. There is no mandate and no auto-debit. You pay for a month, it runs out, and
+        nothing happens unless you buy another one. Buying extra months while one is active
+        adds to the end date rather than replacing it.
+      </p>
+    </details>
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">What happens to my data when Pro runs out?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        Nothing is deleted. Your profile, matches, saved jobs and everything already
+        generated stay exactly where they are — you drop back to the free credit allowance
+        and the Pro-only actions stop until you buy another month.
+      </p>
+    </details>
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Do unused credits roll over?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        No — the allowance resets on the 1st of each month. It is sized so that running out
+        should not happen during a normal search; if it does, tell us, because that is
+        useful information about the sizing.
+      </p>
+    </details>
+    <details class="group py-5">
+      <summary class="flex items-center gap-4 cursor-pointer list-none">
+        <span class="text-white font-medium flex-1">Can I get a refund?</span>
+        <svg class="chev w-4 h-4 text-slate-500 transition-transform shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l5 5 5-5"/></svg>
+      </summary>
+      <p class="mt-3 text-slate-400 leading-relaxed">
+        Yes, within 7 days if you have used fewer than 50 credits — the full policy is on the
+        <a href="/refunds" class="text-indigo-400 hover:text-indigo-300 underline">refunds page</a>.
+        The honest advice is to use the free plan first: it exists so you can judge the match
+        quality before paying anything.
+      </p>
+    </details>
+  </div>
+</section>
+
+<section class="glow border-t border-white/5">
+  <div class="max-w-3xl mx-auto px-5 py-16 text-center">
+    <h2 class="text-2xl md:text-3xl font-semibold text-white tracking-tight">
+      Try the free plan first
+    </h2>
+    <p class="mt-4 text-slate-400">
+      It is enough to see your real matches. Decide about Pro after that.
+    </p>
+    <a href="/signin" class="mt-8 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-slate-900 font-medium hover:bg-slate-200 transition">
+      Get started free
+      <svg viewBox="0 0 20 20" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5l4.5 4.5-4.5 4.5"/></svg>
+    </a>
+  </div>
+</section>
+
+<footer class="border-t border-white/5">
+  <div class="max-w-6xl mx-auto px-5 py-10 flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-slate-500">
+    <span class="text-slate-400 font-medium">CodeSkate</span>
+    <a href="/" class="hover:text-slate-300">Home</a>
+    <a href="/privacy" class="hover:text-slate-300">Privacy</a>
+    <a href="/terms" class="hover:text-slate-300">Terms</a>
+    <a href="/refunds" class="hover:text-slate-300">Refunds</a>
+    <a href="/contact" class="hover:text-slate-300">Contact</a>
+  </div>
+</footer>
+
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TICK = `<svg viewBox="0 0 20 20" class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor"
+  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
+const CROSS = `<svg viewBox="0 0 20 20" class="w-4 h-4 mx-auto text-slate-600" fill="none" stroke="currentColor"
+  stroke-width="2.2" stroke-linecap="round"><path d="M6 6l8 8M14 6l-8 8"/></svg>`;
+const YES = `<svg viewBox="0 0 20 20" class="w-4 h-4 mx-auto text-emerald-400" fill="none" stroke="currentColor"
+  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>`;
+
+fetch('/api/config').then(r => r.json()).then(c => {
+  const free = c.plans.find(p => p.key === 'free') || {};
+  const pro  = c.plans.find(p => p.key === 'pro')  || {};
+
+  document.getElementById('planCards').innerHTML = c.plans.map(p => {
+    const isPro = p.key === 'pro';
+    return `
+    <div class="rounded-2xl p-7 ${isPro
+      ? 'border-2 border-indigo-500/40 bg-indigo-500/[0.06] relative'
+      : 'card'}">
+      ${isPro ? `<div class="absolute -top-3 left-7 px-2.5 py-1 rounded-md bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-medium">For an active search</div>` : ''}
+      <div class="text-white font-medium text-lg">${esc(p.name)}</div>
+      <div class="mt-3 flex items-baseline gap-1.5">
+        <span class="text-4xl font-semibold text-white">₹${p.price_inr || 0}</span>
+        <span class="text-slate-500">/ month</span>
+      </div>
+      <p class="mt-3 text-sm text-slate-400">${esc(p.blurb || '')}</p>
+      <div class="mt-5 rounded-xl bg-black/25 border border-white/6 px-4 py-3 text-sm">
+        <span class="text-white font-medium">${p.credits} credits</span>
+        <span class="text-slate-500">a month</span>
+      </div>
+      <ul class="mt-6 space-y-2.5 text-sm">
+        ${p.features.map(f => `<li class="flex gap-2.5 ${isPro ? 'text-indigo-200' : 'text-slate-400'}">
+          <span class="${isPro ? 'text-indigo-400' : 'text-slate-600'}">${TICK}</span>
+          <span>${esc(f)}</span></li>`).join('')}
+      </ul>
+      <a href="/signin" class="mt-7 block text-center px-5 py-3 rounded-xl font-medium transition ${isPro
+        ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-400 hover:to-violet-500'
+        : 'border border-white/12 text-slate-200 hover:bg-white/5'}">
+        ${isPro ? 'Sign in and upgrade' : 'Start free'}</a>
+      ${isPro && !c.billing_configured
+        ? '<div class="mt-3 text-xs text-amber-400">Payments are not switched on for this deployment yet.</div>' : ''}
+    </div>`;
+  }).join('');
+
+  const rows = [
+    ['Credits per month', `${free.credits}`, `${pro.credits}`],
+    ['Profile read from your resume', YES, YES],
+    ['Live openings from company career pages', YES, YES],
+    ['Match score with a written reason', YES, YES],
+    ['Jobs scored per batch', '25', '200'],
+    ['Readiness check on a target role', YES, YES],
+    ['Saved-job board with follow-up reminders', YES, YES],
+    ['Resume rewritten per job, fact-checked', CROSS, YES],
+    ['Cover letter and recruiter messages', CROSS, YES],
+    ['Interview prep for the specific role', CROSS, YES],
+    ['Company briefing', CROSS, YES],
+    ['Salary band and recommended ask', CROSS, YES],
+  ];
+  document.getElementById('cmpBody').innerHTML = rows.map(([label, a, b]) => `
+    <tr>
+      <td class="py-3 text-slate-300">${esc(label)}</td>
+      <td class="py-3 text-center text-slate-400">${a.startsWith('<') ? a : esc(a)}</td>
+      <td class="py-3 text-center text-indigo-200 font-medium">${b.startsWith('<') ? b : esc(b)}</td>
+    </tr>`).join('');
+}).catch(() => {
+  document.getElementById('planCards').innerHTML =
+    '<div class="text-sm text-slate-500 text-center py-10">Could not load plans. Reload the page.</div>';
+});
+</script>
+</body>
+</html>

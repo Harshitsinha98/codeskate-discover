@@ -362,13 +362,20 @@ def score(limit: int = typer.Option(40, help="Max jobs to send to the LLM")) -> 
     candidates = db.unscored_candidates(conn)
     console.print(f"[bold]Agent 5 — Fit Scoring[/bold]\n  {len(candidates)} unscored jobs")
 
-    kept = fit_scoring.prefilter(candidates, targets)
-    console.print(f"  prefilter (free): kept {len(kept)}, dropped {len(candidates) - len(kept)}")
+    # `report` runs the same filter but also says what each rule threw away, so an
+    # empty result explains itself instead of just being empty.
+    diag = fit_scoring.report(candidates, targets)
+    console.print(f"  prefilter (free): kept {diag['kept']}, dropped {diag['total'] - diag['kept']}")
+    for row in diag["rejected"]:
+        console.print(f"    [dim]{row['count']:>5}  {row['label'].lower()}[/dim]")
 
     # Fetch full descriptions only for the postings that survived.
-    kept = db.jobs_by_ids(conn, [row["external_id"] for row in kept[:limit]])
+    survivors = fit_scoring.prefilter(candidates, targets)
+    kept = db.jobs_by_ids(conn, [row["external_id"] for row in survivors[:limit]])
     if not kept:
-        console.print("\n[yellow]Nothing survived the prefilter. Loosen config/targets.yaml.[/yellow]")
+        console.print("\n[yellow]Nothing survived the prefilter.[/yellow]")
+        for advice in diag["advice"]:
+            console.print(f"  [yellow]{advice['problem']}[/yellow]\n  {advice['fix']}")
         return
 
     console.print(f"  sending {len(kept)} to {llm.s.model_cheap}\n")
