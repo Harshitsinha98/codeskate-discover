@@ -1,0 +1,46 @@
+# Render blueprint. Railway needs no file — it detects the Dockerfile.
+#
+# Secrets are marked sync: false so they are entered in the dashboard rather than
+# committed here.
+
+services:
+  - type: web
+    name: codeskate
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter          # free instances sleep, which stalls the queue worker
+    region: singapore      # closest to Indian users
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: WORKER_IN_PROCESS
+        value: "1"
+      - key: SECURE_COOKIES
+        value: "1"
+      - key: LLM_PROVIDER
+        value: openai
+      - key: GLOBAL_DAILY_RUN_CAP
+        value: "5000"
+
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_SECRET
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      # CRON_SECRET is only needed for the serverless path, where an external
+      # scheduler calls /api/worker. The in-process worker does not use it.

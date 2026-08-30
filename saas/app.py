@@ -12,9 +12,10 @@ feel synchronous; multi-unit jobs like discovery are carried on by the cron work
 from __future__ import annotations
 
 import os
-from pathlib import Path
-
 import secrets
+import threading
+from contextlib import asynccontextmanager
+from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import Cookie, Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
@@ -34,7 +35,48 @@ STATIC = Path(__file__).parent / "static"
 SECURE_COOKIES = os.getenv("SECURE_COOKIES", "1") != "0"
 INLINE_WORKER_BUDGET = float(os.getenv("INLINE_WORKER_BUDGET", "12"))
 
-app = FastAPI(title="CodeSkate", docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Start an in-process queue worker when running on a real server.
+
+    On a host that keeps a process alive (Railway, Render, Fly, a VM) this removes
+    the need for an external scheduler entirely: a background thread drains the
+    queue continuously, so a long job finishes whether or not the user's tab is
+    open. Serverless deployments leave WORKER_IN_PROCESS unset and rely on cron
+    plus the browser nudging /api/jobs/{id}/resume.
+
+    This is why the platform choice matters more than it looks. Vercel's Hobby
+    plan caps cron at once per day, which would leave an abandoned job queued for
+    up to 24 hours.
+    """
+    stop = threading.Event()
+    thread: threading.Thread | None = None
+
+    if os.getenv("WORKER_IN_PROCESS", "0") == "1":
+        create_all()
+        global _schema_ready
+        _schema_ready = True
+
+        def loop() -> None:
+            while not stop.wait(float(os.getenv("WORKER_POLL_SECONDS", "3"))):
+                try:
+                    queue.work(budget_seconds=20.0, max_jobs=3)
+                except Exception as e:  # noqa: BLE001 - a bad job must not kill the worker
+                    print(f"worker loop error: {type(e).__name__}: {e}", flush=True)
+
+        thread = threading.Thread(target=loop, daemon=True, name="codeskate-worker")
+        thread.start()
+        print("in-process queue worker started", flush=True)
+
+    try:
+        yield
+    finally:
+        stop.set()
+        if thread:
+            thread.join(timeout=5)
+
+
+app = FastAPI(title="CodeSkate", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 _schema_ready = False
 

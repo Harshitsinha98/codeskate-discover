@@ -4,6 +4,58 @@ The hosted app lives in `saas/` and is a different deployment target from the
 single-user `web/` app. Both drive the same agents; only persistence, auth and the
 execution model differ.
 
+## Where to deploy — read this first
+
+**Recommendation: Railway (or Render), not Vercel.** Both are set up in this repo,
+but the numbers are one-sided at launch.
+
+| | Railway / Render | Vercel |
+|---|---|---|
+Cost to charge money | **~$5/month** | **$20/month** — Hobby forbids commercial use |
+Queue worker | In-process thread, drains continuously | External cron |
+Cron frequency | n/a | **Hobby: once per day.** Pro: per minute |
+Long jobs | No timeout | 60s per unit on Hobby |
+Setup | Point at the Dockerfile | Import repo, set env vars |
+
+Two facts decide it:
+
+1. **Vercel's Hobby plan is non-commercial.** Charging ₹999 on it breaks their
+   terms, so a paid product needs Pro at $20/month before the first customer.
+   Railway's Hobby plan is $5/month, and a Python service running continuously
+   consumes well under that in credits.
+2. **Vercel Hobby caps cron at once per day.** An hourly schedule fails at deploy
+   time with "Hobby accounts are limited to daily cron jobs", so `vercel.json`
+   here uses a daily schedule. That means a user who starts a long job and closes
+   the tab could wait up to 24 hours for it to finish. On a persistent host the
+   in-process worker drains the queue every few seconds and the problem disappears.
+
+Vercel becomes the better answer later — put the frontend on its CDN and keep the
+API on a persistent host — but not for a first paid launch.
+
+### Railway (recommended)
+
+1. Create a Postgres database (see below) and collect the secrets.
+2. On [railway.com](https://railway.com): **New Project → Deploy from GitHub repo**.
+   Railway detects the `Dockerfile` on its own.
+3. Add the environment variables from the table below. `WORKER_IN_PROCESS=1` is
+   already baked into the image, so no scheduler is needed.
+4. Settings → Networking → **Generate Domain**, then set `PUBLIC_BASE_URL` to it
+   and add `<domain>/api/auth/google/callback` to your Google OAuth client.
+
+### Render
+
+Same image, plus `render.yaml` as a blueprint: **New → Blueprint**, point it at the
+repo, then fill in the variables marked `sync: false`. Use the Starter plan rather
+than Free — free instances sleep, which stalls the queue worker.
+
+### Vercel, if you insist
+
+`vercel.json`, `api/index.py` and `requirements.txt` are all present and correct.
+Import the repo, add the same variables plus `CRON_SECRET`, and accept the daily
+cron. Do not charge for it on Hobby.
+
+---
+
 ## Why the single-user app could not just be deployed
 
 Three things had to change before Vercel was viable, and two of them were not
