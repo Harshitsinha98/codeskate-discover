@@ -1,0 +1,47 @@
+# Your job feed. Each entry is a company's ATS board slug — these endpoints are
+# public, free and keyless. Growing this list is the single highest-leverage
+# thing you can do for match quality.
+#
+# How to find a slug: open a company's careers page and look at the URL.
+#   job-boards.greenhouse.io/SLUG   -> greenhouse
+#   jobs.lever.co/SLUG              -> lever
+#   jobs.ashbyhq.com/SLUG           -> ashby
+#
+# Every slug below was verified live on 2026-08-30 and returned postings.
+# Boards go stale — `codeskate discover` reports dead slugs and skips them safely.
+#
+# TODO(you): replace these US-centric names with companies you would actually
+# join. 200-300 relevant slugs beats 4000 jobs you don't want.
+
+greenhouse:
+  - affirm
+  - airbnb
+  - anthropic
+  - asana
+  - brex
+  - cloudflare
+  - coinbase
+  - databricks
+  - discord
+  - dropbox
+  - duolingo
+  - figma
+  - flexport
+  - gitlab
+  - instacart
+  - reddit
+  - robinhood
+  - samsara
+  - sofi
+  - stripe
+  - twilio
+  - zscaler
+
+lever:
+  - palantir
+  - spotify
+  - matchgroup
+
+ashby:
+  - linear
+  - vanta

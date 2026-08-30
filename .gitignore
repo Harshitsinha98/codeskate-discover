@@ -1,0 +1,17 @@
+# secrets
+.env
+
+# personal data — never commit your own resume / profile
+data/inbox/*
+!data/inbox/.gitkeep
+data/*.db
+data/out/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
