@@ -605,9 +605,6 @@ def next_actions(user: dict = Depends(current_user)) -> dict:
     def add(label: str, why: str) -> None:
         actions.append({"label": label, "why": why})
 
-    if not store.get_user_key(user_id):
-        add("Add your API key", "Settings -> API key. Agents cannot run without it.")
-        return {"actions": actions}
     if not store.list_documents(user_id):
         add("Upload your resume and brag document",
             "Everything downstream is built from these.")
