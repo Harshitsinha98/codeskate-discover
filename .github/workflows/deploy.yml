@@ -1,0 +1,53 @@
+# Fully automatic deploy: push to main, the instance updates itself.
+#
+# This is the hands-off version of deploy/deploy.sh. On every push to main (that
+# touches something deployable), GitHub SSHes into the Oracle box and runs the
+# same deploy.sh — which builds, health-checks, and rolls back on failure. So the
+# safety is identical to running it by hand; this just removes the "by hand" part.
+#
+# One-time setup, in the repo's Settings -> Secrets and variables -> Actions:
+#   SSH_HOST         129.225.85.120
+#   SSH_USER         ubuntu
+#   SSH_KEY          the full contents of your ssh-key-...key private key file
+#                    (open it in a text editor, copy everything including the
+#                     -----BEGIN...----- and -----END...----- lines)
+#   SSH_PORT         22   (optional; defaults to 22)
+#
+# The key never appears in logs and is not visible to anyone who can see the repo.
+# Delete this file if you would rather always deploy manually — deploy/deploy.sh
+# does not depend on it.
+
+name: Deploy to Oracle
+
+on:
+  push:
+    branches: [main]
+    # Docs-only pushes do not need a rebuild.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  # A manual "Run workflow" button, for redeploying without a new commit.
+  workflow_dispatch:
+
+# Never let two deploys run at once — the second would fight the first mid-build.
+concurrency:
+  group: deploy-oracle
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          # 15 minutes: a cold build on a 1 GB box plus the health wait.
+          command_timeout: 15m
+          script: |
+            set -e
+            cd ~/codeskate
+            ./deploy/deploy.sh

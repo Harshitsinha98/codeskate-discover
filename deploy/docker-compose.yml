@@ -14,6 +14,10 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+    # Pinned so deploy.sh can tag a known name as the rollback point. Without this,
+    # Compose derives the image name from the project directory, which changes if
+    # the compose file is run from elsewhere and would break the rollback.
+    image: codeskate-app:latest
     restart: unless-stopped
     env_file: .env
     environment:
